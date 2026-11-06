@@ -33,5 +33,5 @@ Proof.
 
 - `submit_script` still forces Dry Run for every Start. Omit it when the run must hit the DOCX port.
 - OnlyOffice has no silent-print flag. The production fallback converts with `x2t` and spools that PDF through the Sumatra port. This run injects the engines, so it does not convert or spool.
-- `等待打印队列清空后再发下一份` is still stored and does not gate the next DOCX.
+- `等待打印队列清空后再发下一份` gates the next file when Dry Run is off. This run leaves it off. See [Batch end report and spooler gate](./batch-end-report.md).
 - Images still fail with `该格式暂不支持打印`.

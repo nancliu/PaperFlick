@@ -1,6 +1,6 @@
 # Image print with Dry Run off
 
-An image Print Item is handed to Pillow and Windows printing when Dry Run is off. The Batch still waits out the interval. The resolved direction selects portrait or landscape for that job, and PrinterDefault leaves the printer's current direction unchanged. A missing printer or a file Pillow cannot open fails that Print Item and the Batch continues. DOCX still fails the item with `该格式暂不支持打印`. This feature does not print DOCX.
+An image Print Item is handed to Pillow and Windows printing when Dry Run is off. The Batch still waits out the interval. The resolved direction selects portrait or landscape for that job, and PrinterDefault leaves the printer's current direction unchanged. A missing printer or a file Pillow cannot open fails that Print Item and the Batch continues. A DOCX in the same Batch is covered by the DOCX feature; this proof injects a failing DOCX port so Word and OnlyOffice are never launched.
 
 ## What the user does
 
@@ -23,7 +23,7 @@ Steps.
 2. With Dry Run on, start one image. The device factory is not called. The row succeeds.
 3. Clear the list. Turn Dry Run off, set the interval, and persist. `load().dry_run` is false.
 4. Add a wide PNG, a corrupt PNG, a DOCX, and a tall PNG. Press start through `_on_start()`.
-5. The device sees landscape, then portrait. The gap is at least the interval. The corrupt row shows `图片无法打开`. The DOCX row shows `该格式暂不支持打印`. The Batch returns to idle.
+5. The device sees landscape, then portrait. The gap is at least the interval. The corrupt row shows `图片无法打开`. The DOCX row shows a Word then OnlyOffice failure from the injected port. The Batch returns to idle.
 
 Proof.
 
@@ -34,5 +34,5 @@ Proof.
 
 - `submit_script` still forces Dry Run for every Start. Omit it when the run must hit the image device.
 - No selected printer uses the Windows default printer. The injected device receives that name.
-- `等待打印队列清空后再发下一份` is still stored and does not gate the next image.
+- `等待打印队列清空后再发下一份` gates the next file when Dry Run is off. This run leaves it off. See [Batch end report and spooler gate](./batch-end-report.md).
 - The stand-in device never calls StartDoc. A missing printer name is covered by `test_unknown_printer_records_a_reason_without_raising`.

@@ -20,6 +20,7 @@ from paperflick.core.batch.events import (
     ItemsChanged,
     ItemStatusChanged,
     PhaseChanged,
+    RunReported,
 )
 from paperflick.core.batch.formats import DocKind
 from paperflick.core.batch.prefs import BatchPrefs
@@ -65,6 +66,7 @@ __all__ = [
     "RemoveItems",
     "ReprintFailed",
     "ResumeBatch",
+    "RunReported",
     "SetOrientation",
     "StartBatch",
     "StopBatch",

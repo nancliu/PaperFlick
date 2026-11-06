@@ -22,10 +22,12 @@ from paperflick.core.batch import (
     RemoveItems,
     ReprintFailed,
     ResumeBatch,
+    RunReported,
     SetOrientation,
     StartBatch,
     StopBatch,
 )
+from paperflick.core.batch.gate import SpoolerProbe
 from paperflick.core.printers import list_installed_printers, selected_printer_for_persist
 from paperflick.core.settings import Settings, coerce_interval_seconds, load, save
 from paperflick.core.submit import (
@@ -80,6 +82,7 @@ class MainWindow(ctk.CTk):
         sumatra_run: SumatraRunner | None = None,
         image_devices: DeviceFactory | None = None,
         docx_submit: PrintSubmitPort | None = None,
+        spooler: SpoolerProbe | None = None,
     ) -> None:
         super().__init__()
         self.title("PaperFlick")
@@ -107,6 +110,7 @@ class MainWindow(ctk.CTk):
             submit_factory=submit_factory,
             schedule_after=self._tk_schedule,
             cancel_after=self._tk_cancel,
+            spooler=spooler,
         )
         self._session.subscribe(self._on_batch_event)
         self._after_handles: set[str] = set()
@@ -301,19 +305,21 @@ class MainWindow(ctk.CTk):
         if before.phase is not BatchPhase.IDLE or before.failed_count == 0:
             return
         failed = before.ids_with(ItemStatus.FAILED)
+        self._status_label.configure(text="")
         prefs = BatchPrefs.from_settings(self._settings)
         self._session.apply(ReprintFailed(StartBatch(prefs=prefs)))
         self._item_list.check_only(failed)
-        self._status_label.configure(text="")
 
     def _on_clear_succeeded(self) -> None:
         self._session.apply(ClearSucceeded())
 
     def _on_start(self) -> None:
         self._persist()
+        if self._session.snapshot().phase is not BatchPhase.IDLE:
+            return
+        self._status_label.configure(text="")
         prefs = BatchPrefs.from_settings(self._settings)
         self._session.apply(StartBatch(prefs=prefs))
-        self._status_label.configure(text="")
 
     def _on_pause(self) -> None:
         self._session.apply(PauseBatch())
@@ -324,8 +330,10 @@ class MainWindow(ctk.CTk):
     def _on_stop(self) -> None:
         self._session.apply(StopBatch())
 
-    def _on_batch_event(self, _event: BatchEvent) -> None:
+    def _on_batch_event(self, event: BatchEvent) -> None:
         self._bind_list(self._session.snapshot())
+        if isinstance(event, RunReported):
+            self._status_label.configure(text=event.text)
 
     def _bind_list(self, snapshot: BatchSnapshot) -> None:
         self._item_list.bind_snapshot(snapshot)
