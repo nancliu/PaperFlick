@@ -14,7 +14,7 @@ Preconditions.
 
 - Disposable `PAPERFLICK_APPDATA`.
 - Pass `submit_script=SubmitScript((SubmitFailed("卡纸"),))` to `MainWindow` when the run must inject one failure. The product launch omits it. An empty script accepts every readable file.
-- Enable Dry Run before Start. The script does not bypass that guard.
+- `submit_script` forces Dry Run for every Start, even when the Dry Run checkbox is off. The product window omits the script, so Dry Run off uses SumatraPDF.
 
 Steps.
 
@@ -30,6 +30,6 @@ Deleting a file after it was added fails that row with `文件不存在`. That p
 ## Gotchas
 
 - Reprint while the Batch is running or paused does nothing and leaves the failure reason in place.
-- Reprint with Dry Run off raises before any row resets.
+- Reprint with Dry Run off submits through the same port as Start. A missing SumatraPDF fails that row again and the Batch still finishes.
 - After Stop, rows that were still waiting run again together with the rows reprint just reset.
 - Proof is `pytest tests/test_batch_fail_reprint.py tests/test_gui.py`.
