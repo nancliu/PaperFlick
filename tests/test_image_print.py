@@ -374,12 +374,17 @@ def test_image_batch_records_failures_and_continues(tmp_path: Path) -> None:
         argv_log.append(list(argv))
         return subprocess.CompletedProcess(list(argv), 0)
 
+    class _DocxStub:
+        def submit(self, _request: SubmitRequest) -> SubmitFailed:
+            return SubmitFailed("Word：stub；OnlyOffice：stub")
+
     session = BatchSession(
         submit_factory=lambda prefs: choose_submit_port(
             prefs,
             executable=exe,
             run=run,
             devices=_factory(opened),
+            docx=_DocxStub(),
         )
     )
     session.apply(AddPaths([wide, bad, docx, pdf, tall]))
@@ -397,7 +402,9 @@ def test_image_batch_records_failures_and_continues(tmp_path: Path) -> None:
     assert len(opened) == 1
 
     assert clock.advance()
-    assert session.snapshot().items[2].failure_reason == "该格式暂不支持打印"
+    reason = session.snapshot().items[2].failure_reason
+    assert reason is not None
+    assert "Word" in reason and "OnlyOffice" in reason
 
     assert clock.advance()
     assert len(argv_log) == 1

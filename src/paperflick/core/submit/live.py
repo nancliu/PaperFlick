@@ -1,10 +1,8 @@
-"""Real Print Job port. PDF and images dispatch by DocKind."""
+"""Real Print Job port. PDF, images, and DOCX dispatch by DocKind."""
 
 from __future__ import annotations
 
 from paperflick.core.batch.formats import DocKind
-from paperflick.core.submit.image_win import ImageWinSubmit
-from paperflick.core.submit.pdf_sumatra import PdfSumatraSubmit
 from paperflick.core.submit.port import (
     REASON_UNSUPPORTED,
     PrintSubmitPort,
@@ -18,14 +16,20 @@ from paperflick.core.submit.preflight import preflight
 class LiveSubmit:
     """Submit one Print Item through the engine for its kind.
 
-    PDF uses SumatraPDF. Images use Pillow and Windows printing. Every other
-    kind fails that item. DOCX is one of those kinds until its own issue.
+    PDF uses SumatraPDF. Images use Pillow and Windows printing. DOCX uses
+    Word then OnlyOffice. Every other kind fails that item.
     """
 
-    def __init__(self, pdf: PdfSumatraSubmit, image: ImageWinSubmit) -> None:
+    def __init__(
+        self,
+        pdf: PrintSubmitPort,
+        image: PrintSubmitPort,
+        docx: PrintSubmitPort,
+    ) -> None:
         self._ports: dict[DocKind, PrintSubmitPort] = {
             DocKind.PDF: pdf,
             DocKind.IMAGE: image,
+            DocKind.DOCX: docx,
         }
 
     def submit(self, request: SubmitRequest) -> SubmitResult:
