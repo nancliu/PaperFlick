@@ -5,6 +5,9 @@ dependencies:
   - python>=3.11
   - tk
   - pywin32
+  - pypdf
+  - pillow
+  - python-docx
   - pip
   - pip:
       - customtkinter
