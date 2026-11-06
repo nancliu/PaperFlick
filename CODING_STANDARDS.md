@@ -10,3 +10,7 @@ Mechanical rules are enforced by **ruff** and **pytest** (pre-commit / CI). This
 ## Persistence symmetry
 
 - Controls that represent the same `Settings` fields should persist with the same urgency. If a checkbox writes on change, a related text field must not silently require an unrelated focus event before the value can survive a crash or kill.
+
+## Apply that can no-op
+
+- `BatchSession.apply` may return without changing phase or items (guarded commands such as reprint with zero failures). UI side effects that assume the command ran (selection reset, status clear, button enablement) must gate on a pre-apply snapshot check or a post-apply delta, not on "apply did not raise".

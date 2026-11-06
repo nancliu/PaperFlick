@@ -1,6 +1,6 @@
 ---
 name: verify-paperflick
-description: Drive the PaperFlick Windows desktop app (CustomTkinter) to prove boot and settings behavior. Use when verifying PaperFlick changes, Dry Run toggles, or AppData settings persistence.
+description: Drive the PaperFlick Windows desktop app (CustomTkinter) to prove boot, settings, Dry Run batch, orientation-on-add, fail-and-reprint, and printer-sidebar behavior. Use when verifying PaperFlick changes or AppData settings persistence.
 ---
 
 # Verify PaperFlick
@@ -26,10 +26,10 @@ For headless proof in the same process (CI / agent without staring at the window
 
 ## Doctor
 
-Read-only health check before driving:
+Read-only health check before driving (script file; do not use `python -c` under PowerShell):
 
 ```powershell
-mamba run -n paperflick python -c "import paperflick; from paperflick.core.settings import Settings, load; print(Settings()); print('ok')"
+mamba run -n paperflick python .cursor\skills\verify-paperflick\_doctor.py
 ```
 
 Require: import succeeds; `Settings()` defaults are `interval_seconds=2.0`, `wait_for_empty_queue=False`, `dry_run=False`. If `PAPERFLICK_APPDATA` is set, `load()` must read/write only under that directory.
