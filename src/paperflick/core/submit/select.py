@@ -6,6 +6,8 @@ from pathlib import Path
 
 from paperflick.core.batch.prefs import BatchPrefs
 from paperflick.core.submit.dry_run import DryRunSubmit
+from paperflick.core.submit.image_win import DeviceFactory, ImageWinSubmit
+from paperflick.core.submit.live import LiveSubmit
 from paperflick.core.submit.pdf_sumatra import PdfSumatraSubmit, SumatraRunner, find_sumatra
 from paperflick.core.submit.port import PrintSubmitPort
 
@@ -15,16 +17,21 @@ def choose_submit_port(
     *,
     executable: Path | None = None,
     run: SumatraRunner | None = None,
+    devices: DeviceFactory | None = None,
 ) -> PrintSubmitPort:
-    """Return Dry Run when asked. Otherwise one Sumatra port for the Batch.
+    """Return Dry Run when asked. Otherwise one port for PDF and images.
 
     ``executable`` None searches the machine. A passed path is used as given,
     including when the file is missing, so a test can fail closed without
-    launching an installed SumatraPDF.
+    launching an installed SumatraPDF. ``devices`` None draws each image
+    through the Windows spooler.
     """
     if prefs.dry_run:
         return DryRunSubmit()
     found = find_sumatra() if executable is None else executable
     if run is None:
-        return PdfSumatraSubmit(found)
-    return PdfSumatraSubmit(found, run=run)
+        pdf = PdfSumatraSubmit(found)
+    else:
+        pdf = PdfSumatraSubmit(found, run=run)
+    image = ImageWinSubmit() if devices is None else ImageWinSubmit(devices=devices)
+    return LiveSubmit(pdf, image)

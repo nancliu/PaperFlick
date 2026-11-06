@@ -1,6 +1,7 @@
-"""Print Job submit boundary. Dry Run and SumatraPDF divert here only."""
+"""Print Job submit boundary. Dry Run, SumatraPDF, and image printing divert here."""
 
 from paperflick.core.submit.dry_run import DryRunSubmit, SubmitScript
+from paperflick.core.submit.image_win import DeviceFactory, ImageWinSubmit
 from paperflick.core.submit.pdf_sumatra import (
     PdfSumatraSubmit,
     SumatraRunner,
@@ -17,7 +18,9 @@ from paperflick.core.submit.port import (
 from paperflick.core.submit.select import choose_submit_port
 
 __all__ = [
+    "DeviceFactory",
     "DryRunSubmit",
+    "ImageWinSubmit",
     "PdfSumatraSubmit",
     "PrintSubmitPort",
     "SubmitFailed",
