@@ -29,4 +29,5 @@ Preconditions:
 ## Gotchas
 
 - Missing printer must not block a future Dry Run Start (owned by issue #2).
+- Live enum needs `pywin32` in the `paperflick` env (`environment.yml`). Without it, the sidebar shows the empty placeholder.
 - Unit tests mock `win32print.EnumPrinters`; they do not require a physical printer.

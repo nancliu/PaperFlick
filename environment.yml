@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python>=3.11
   - tk
+  - pywin32
   - pip
   - pip:
       - customtkinter
