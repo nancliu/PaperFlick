@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from paperflick.core.batch import BatchSnapshot, ItemId, ItemStatus
+from paperflick.core.batch import (
+    BatchSnapshot,
+    Facing,
+    ItemId,
+    ItemStatus,
+    Orientation,
+    PrintItem,
+    resolve_facing,
+)
 
 _STATUS_LABEL = {
     ItemStatus.WAITING: "等待",
@@ -12,6 +20,27 @@ _STATUS_LABEL = {
     ItemStatus.SUCCESS: "成功",
     ItemStatus.FAILED: "失败",
 }
+
+_FACING_LABEL = {
+    Facing.LANDSCAPE: "横向",
+    Facing.PORTRAIT: "纵向",
+}
+
+
+def orientation_label(item: PrintItem) -> str:
+    """Return the orientation cell text for one Print Item.
+
+    Auto shows the inferred facing alone, with no policy prefix. A forced
+    policy uses the same facing words. Printer default names no facing.
+    """
+    facing = resolve_facing(item.orientation, item.shape)
+    if item.orientation is Orientation.AUTO:
+        if facing is Facing.LANDSCAPE:
+            return _FACING_LABEL[Facing.LANDSCAPE]
+        return _FACING_LABEL[Facing.PORTRAIT]
+    if facing is None:
+        return "打印机"
+    return _FACING_LABEL[facing]
 
 
 class ItemListPanel(ctk.CTkFrame):
@@ -54,6 +83,7 @@ class ItemListPanel(ctk.CTkFrame):
             ctk.CTkCheckBox(row, text="", variable=var, width=24).pack(side="left")
             name = item.path.name or str(item.path)
             status = _STATUS_LABEL.get(item.status, item.status.value)
-            ctk.CTkLabel(row, text=f"{name}  [{status}]", anchor="w").pack(
+            label = orientation_label(item)
+            ctk.CTkLabel(row, text=f"{name}  {label}  [{status}]", anchor="w").pack(
                 side="left", fill="x", expand=True, padx=4
             )
