@@ -16,10 +16,11 @@ Feature worktrees must include these files (branch from a tip that already has t
 ### Workflow (Matt + pstack)
 
 - **Align**: Matt (`/grill-me`, `/grill-with-docs`, `/wayfinder`, `/to-spec`, `/to-tickets`). Do not start `/implement` in parallel with pstack orchestration.
-- **Build**: pstack `/poteto-mode` owns execution. Parallel runs need isolation (worktree / cloud / disjoint tickets); do not dual-drive one working tree.
+- **Build**: pstack `/poteto-mode` owns execution (Feature / Bug fix / …). Parallel runs need isolation (worktree / cloud / disjoint tickets); do not dual-drive one working tree.
 - **Verify (runtime)**: `.cursor/skills/verify-paperflick/` once the app can launch. Prefer that skill over one-off `_verify_*.py` scripts.
-- **Review / tests**: Matt `/tdd` and `/code-review` as needed inside build; not a substitute for runtime verification. Mechanical style is enforced by ruff/pytest (see pre-commit / CI). Judgement calls live in `CODING_STANDARDS.md`.
-- **Environment retro**: Matt `/retro` after builds (agent environment, not product code).
+- **Code review (Matt `/code-review`)**: After each feature PR is pushed (or after a fix round on that PR), before babysit declares merge-ready and before Shipping. Fixed point is the PR base (`main` or parent branch). Spec axis uses the linked GitHub issue; Standards axis uses `CODING_STANDARDS.md` + smell baseline. Spec/Standards findings that block acceptance get a `/poteto-mode` fix round, then re-review that PR. Not a substitute for runtime verify or independent Shipping verifiers. Mechanical style stays on ruff/pytest; judgement stays in `CODING_STANDARDS.md`.
+- **Babysit / Shipping**: pstack babysit to merge-ready; Shipping only on explicit land/ship request (or a session grant that says PASS may land). Independent per-PR PASS/PASS+NOTES before merge.
+- **Environment retro (Matt `/retro`)**: After each development wave lands (one issue or a parallel wave), before starting the next frontier. Target is the agent environment (AGENTS pointers, CODING_STANDARDS judgement rules, guardrails, verify skill), not product feature code. Land env fixes as their own small PR when they earn it; do not block the next ticket on a pure write-up unless a guardrail is broken.
 
 ### Windows shell
 
