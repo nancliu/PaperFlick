@@ -21,8 +21,14 @@ def test_defaults_and_round_trip(tmp_path: Path, monkeypatch) -> None:
     assert load().interval_seconds == 2.0
     assert load().wait_for_empty_queue is False
     assert load().dry_run is False
+    assert load().selected_printer is None
 
-    mutated = Settings(interval_seconds=5.5, wait_for_empty_queue=True, dry_run=True)
+    mutated = Settings(
+        interval_seconds=5.5,
+        wait_for_empty_queue=True,
+        dry_run=True,
+        selected_printer="Office Laser",
+    )
     save(mutated)
     assert load() == mutated
     raw = json.loads(settings_path().read_text(encoding="utf-8"))
@@ -30,7 +36,39 @@ def test_defaults_and_round_trip(tmp_path: Path, monkeypatch) -> None:
         "interval_seconds": 5.5,
         "wait_for_empty_queue": True,
         "dry_run": True,
+        "selected_printer": "Office Laser",
     }
+
+
+def test_selected_printer_coerce_and_round_trip(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PAPERFLICK_APPDATA", str(tmp_path))
+    path = settings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "interval_seconds": 2.0,
+                "wait_for_empty_queue": False,
+                "dry_run": False,
+                "selected_printer": "  DeskJet  ",
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert load().selected_printer == "DeskJet"
+
+    save(Settings(selected_printer=None))
+    assert load().selected_printer is None
+    raw = json.loads(settings_path().read_text(encoding="utf-8"))
+    assert raw["selected_printer"] is None
+
+
+def test_selected_printer_empty_string_becomes_none(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("PAPERFLICK_APPDATA", str(tmp_path))
+    path = settings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{"selected_printer": ""}', encoding="utf-8")
+    assert load().selected_printer is None
 
 
 def test_corrupt_file_returns_defaults(tmp_path: Path, monkeypatch) -> None:
