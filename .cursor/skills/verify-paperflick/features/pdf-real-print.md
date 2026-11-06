@@ -33,5 +33,5 @@ Proof.
 
 - `submit_script` still forces Dry Run for every Start. Omit it when the run must hit Sumatra.
 - No selected printer uses `-print-to-default`.
-- `等待打印队列清空后再发下一份` is still stored and does not gate the next PDF.
+- `等待打印队列清空后再发下一份` gates the next file when Dry Run is off. This run leaves it off. See [Batch end report and spooler gate](./batch-end-report.md).
 - The stand-in executable is never spawned when `sumatra_run` is passed. The real `run_sumatra_process` path is covered by `test_run_sumatra_process_returns_the_exit_code`.

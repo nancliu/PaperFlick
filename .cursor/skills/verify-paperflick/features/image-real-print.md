@@ -34,5 +34,5 @@ Proof.
 
 - `submit_script` still forces Dry Run for every Start. Omit it when the run must hit the image device.
 - No selected printer uses the Windows default printer. The injected device receives that name.
-- `等待打印队列清空后再发下一份` is still stored and does not gate the next image.
+- `等待打印队列清空后再发下一份` gates the next file when Dry Run is off. This run leaves it off. See [Batch end report and spooler gate](./batch-end-report.md).
 - The stand-in device never calls StartDoc. A missing printer name is covered by `test_unknown_printer_records_a_reason_without_raising`.
