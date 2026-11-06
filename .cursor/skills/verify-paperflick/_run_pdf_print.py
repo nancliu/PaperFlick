@@ -99,7 +99,8 @@ def _prove_real_pdf_print(
     assert snap.phase is BatchPhase.IDLE
     assert snap.success_count == 2
     assert snap.failed_count == 1
-    assert snap.items[1].failure_reason == "该格式暂不支持打印"
+    assert snap.items[1].failure_reason is not None
+    assert snap.items[1].failure_reason.startswith("图片无法打开")
     assert [call[1][call[1].index("-print-settings") + 1] for call in calls] == [
         "landscape",
         "portrait",
@@ -107,7 +108,7 @@ def _prove_real_pdf_print(
     assert all("-print-to-default" in call[1] for call in calls)
     assert all("-silent" in call[1] for call in calls)
     assert calls[1][0] - calls[0][0] >= 0.3
-    assert any("该格式暂不支持打印" in text for text in _row_labels(app))
+    assert any("图片无法打开" in text for text in _row_labels(app))
 
 
 def _write_log(calls: list[tuple[float, list[str]]]) -> None:

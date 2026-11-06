@@ -13,8 +13,17 @@ from PIL import Image
 from paperflick.core.batch import AddPaths, BatchPhase, ClearItems
 from paperflick.core.batch.types import Facing
 from paperflick.core.settings import load
+from paperflick.core.submit import SubmitFailed, SubmitRequest
 from paperflick.core.submit.image_win import PageDevice
 from paperflick.ui.main_window import MainWindow
+
+
+class _DocxStub:
+    """DOCX port that fails without launching Word or OnlyOffice."""
+
+    def submit(self, _request: SubmitRequest) -> SubmitFailed:
+        """Return a dual-engine failure reason for the row label."""
+        return SubmitFailed("Word：stub；OnlyOffice：stub")
 
 
 class _RecordingPage:
@@ -122,12 +131,14 @@ def _prove_real_image_print(
     assert snap.failed_count == 2
     assert snap.items[1].failure_reason is not None
     assert snap.items[1].failure_reason.startswith("图片无法打开")
-    assert snap.items[2].failure_reason == "该格式暂不支持打印"
+    assert snap.items[2].failure_reason is not None
+    assert "Word" in snap.items[2].failure_reason
+    assert "OnlyOffice" in snap.items[2].failure_reason
     assert [call[2] for call in calls] == [Facing.LANDSCAPE, Facing.PORTRAIT]
     assert calls[1][0] - calls[0][0] >= 0.3
     labels = _row_labels(app)
     assert any("图片无法打开" in text for text in labels)
-    assert any("该格式暂不支持打印" in text for text in labels)
+    assert any("Word" in text and "OnlyOffice" in text for text in labels)
 
 
 def _write_log(calls: list[tuple[float, str, Facing | None]]) -> None:
@@ -152,7 +163,11 @@ def main() -> None:
     def devices(printer: str) -> PageDevice:
         return _RecordingPage(printer, calls)
 
-    app = MainWindow(sumatra_executable=missing_sumatra, image_devices=devices)
+    app = MainWindow(
+        sumatra_executable=missing_sumatra,
+        image_devices=devices,
+        docx_submit=_DocxStub(),
+    )
     try:
         app.update_idletasks()
         _prove_dry_run_skips_the_spooler(app, root, calls)

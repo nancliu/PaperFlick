@@ -1,6 +1,6 @@
 # PDF print with Dry Run off
 
-A PDF Print Item is handed to SumatraPDF when Dry Run is off. The Batch still waits out the interval. The resolved direction becomes Sumatra's `portrait` or `landscape` print setting, and PrinterDefault omits that setting. A missing SumatraPDF fails that Print Item with `未找到 SumatraPDF` and the Batch continues. An image fails the item with `该格式暂不支持打印`. DOCX printing is covered by the DOCX feature.
+A PDF Print Item is handed to SumatraPDF when Dry Run is off. The Batch still waits out the interval. The resolved direction becomes Sumatra's `portrait` or `landscape` print setting, and PrinterDefault omits that setting. A missing SumatraPDF fails that Print Item with `未找到 SumatraPDF` and the Batch continues. A corrupt image in the same Batch fails with `图片无法打开` and does not stop later PDFs. DOCX printing is covered by the DOCX feature.
 
 ## What the user does
 
@@ -22,7 +22,7 @@ Steps.
 2. With Dry Run on, start one PDF. The runner is not called. The row succeeds.
 3. Clear the list. Turn Dry Run off, set the interval, and persist. `load().dry_run` is false.
 4. Add a wide PDF, an image, and a tall PDF. Press start through `_on_start()`.
-5. The runner sees `-print-settings landscape`, then `-print-settings portrait`, both with `-silent`. The gap is at least the interval. The image row shows `该格式暂不支持打印`. The Batch returns to idle.
+5. The runner sees `-print-settings landscape`, then `-print-settings portrait`, both with `-silent`. The gap is at least the interval. The image row shows `图片无法打开`. The Batch returns to idle.
 
 Proof.
 
