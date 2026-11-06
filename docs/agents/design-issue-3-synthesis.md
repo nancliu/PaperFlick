@@ -28,7 +28,6 @@ Why: same policy/fact split as B, without replacing `BatchState.items` / `BatchS
 
 - `BatchRows` / `StoredRow` / `snapshot.rows` rename (too much churn for #3; pairs with #9 risk).
 - `ExplicitPolicy` / `override_policy` bodies beyond a documented hook (`SetOrientation` later).
-- Ignoring PDF `/Rotate` and image EXIF (A’s readers are product-correct; graft A).
 
 ## Operator defaults (Never Block)
 
@@ -36,6 +35,7 @@ Why: same policy/fact split as B, without replacing `BatchState.items` / `BatchS
 - `.doc`: Unread → Portrait + log (python-docx cannot open).
 - Logging: stdlib `logging.getLogger("paperflick.formats")`; no app-wide handler required for #3 (pytest / console capture enough for agents).
 - Square pages: Portrait (`宽 > 高` only).
+- Size rule follows product plan literally: PDF mediabox and Pillow size as stored. No `/Rotate` or EXIF axis swap. (Operator can ask to restore display-aware facing later.)
 
 ## Next
 

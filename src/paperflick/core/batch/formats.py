@@ -16,9 +16,6 @@ from paperflick.core.batch.types import Measured, Unread
 
 _log = logging.getLogger("paperflick.formats")
 
-_EXIF_ORIENTATION = 274
-_EXIF_SWAPS_AXES = frozenset({5, 6, 7, 8})
-
 
 class DocKind(StrEnum):
     """File kind. Values stay the historical kind strings."""
@@ -50,18 +47,13 @@ class _Format:
 
 
 def _pdf_size(path: Path) -> tuple[float, float]:
-    """Return the first page's displayed size in PDF points.
+    """Return page 0 mediabox width and height in PDF points.
 
-    The media box is the unrotated box, so a 90 or 270 degree ``/Rotate`` swaps axes.
+    Product plan compares the mediabox axes as stored. ``/Rotate`` is ignored.
     """
     page = PdfReader(path).pages[0]
     box = page.mediabox
-    width = float(box.width)
-    height = float(box.height)
-    rotation = int(page.rotation or 0) % 360
-    if rotation % 180 == 90:
-        return height, width
-    return width, height
+    return float(box.width), float(box.height)
 
 
 def _docx_size(path: Path) -> tuple[float, float]:
@@ -78,27 +70,10 @@ def _docx_size(path: Path) -> tuple[float, float]:
 
 
 def _image_size(path: Path) -> tuple[float, float]:
-    """Return displayed pixel size.
-
-    Orientations 5 through 8 store pixels swapped relative to how the image displays.
-    """
+    """Return Pillow pixel size without applying EXIF display transforms."""
     with Image.open(path) as image:
         width, height = image.size
-        orientation = _exif_orientation(image)
-    if orientation in _EXIF_SWAPS_AXES:
-        return float(height), float(width)
     return float(width), float(height)
-
-
-def _exif_orientation(image: Image.Image) -> int | None:
-    """Return the EXIF orientation tag, or None when the image has none."""
-    exif = image.getexif()
-    if not exif:
-        return None
-    raw = exif.get(_EXIF_ORIENTATION)
-    if raw is None:
-        return None
-    return int(raw)
 
 
 _FORMATS: tuple[_Format, ...] = (
@@ -133,6 +108,6 @@ def probe(path: Path) -> Probe:
 
 
 def _unread(kind: DocKind, path: Path, reason: str) -> Probe:
-    """Log the portrait fallback once and return an unread probe."""
-    _log.warning("orientation fallback to Portrait for %s: %s", path, reason)
+    """Log an unread first page once and return an unread probe."""
+    _log.warning("page geometry unread for %s: %s", path, reason)
     return Probe(kind=kind, shape=Unread(reason))

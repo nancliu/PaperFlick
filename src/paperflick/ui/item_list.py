@@ -9,7 +9,6 @@ from paperflick.core.batch import (
     Facing,
     ItemId,
     ItemStatus,
-    Orientation,
     PrintItem,
     resolve_facing,
 )
@@ -34,10 +33,6 @@ def orientation_label(item: PrintItem) -> str:
     policy uses the same facing words. Printer default names no facing.
     """
     facing = resolve_facing(item.orientation, item.shape)
-    if item.orientation is Orientation.AUTO:
-        if facing is Facing.LANDSCAPE:
-            return _FACING_LABEL[Facing.LANDSCAPE]
-        return _FACING_LABEL[Facing.PORTRAIT]
     if facing is None:
         return "打印机"
     return _FACING_LABEL[facing]

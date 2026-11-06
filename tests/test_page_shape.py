@@ -25,14 +25,10 @@ from paperflick.core.batch.formats import probe
 from paperflick.core.batch.reduce import reduce
 from paperflick.core.batch.state import BatchState
 
-_EXIF_ORIENTATION = 274
 
-
-def _write_pdf(path: Path, width: float, height: float, rotation: int = 0) -> None:
+def _write_pdf(path: Path, width: float, height: float) -> None:
     writer = PdfWriter()
     page = PageObject.create_blank_page(width=width, height=height)
-    if rotation:
-        page.rotation = rotation
     writer.add_page(page)
     with path.open("wb") as handle:
         writer.write(handle)
@@ -40,13 +36,6 @@ def _write_pdf(path: Path, width: float, height: float, rotation: int = 0) -> No
 
 def _write_png(path: Path, width: int, height: int) -> None:
     Image.new("RGB", (width, height), "white").save(path, format="PNG")
-
-
-def _write_jpeg(path: Path, width: int, height: int, exif_orientation: int) -> None:
-    image = Image.new("RGB", (width, height), "white")
-    exif = image.getexif()
-    exif[_EXIF_ORIENTATION] = exif_orientation
-    image.save(path, format="JPEG", exif=exif)
 
 
 def _write_docx(path: Path, width_mm: float, height_mm: float) -> None:
@@ -73,7 +62,13 @@ def test_landscape_and_portrait_files(tmp_path: Path) -> None:
     tall_docx = tmp_path / "tall.docx"
     _write_pdf(wide_pdf, 842, 595)
     _write_pdf(tall_pdf, 595, 842)
-    _write_pdf(turned_pdf, 595, 842, rotation=90)
+    # /Rotate does not change mediabox axes under the product plan rule.
+    writer = PdfWriter()
+    page = PageObject.create_blank_page(width=595, height=842)
+    page.rotation = 90
+    writer.add_page(page)
+    with turned_pdf.open("wb") as handle:
+        writer.write(handle)
     _write_png(wide_png, 120, 80)
     _write_png(tall_png, 80, 120)
     _write_docx(wide_docx, 297, 210)
@@ -81,7 +76,7 @@ def test_landscape_and_portrait_files(tmp_path: Path) -> None:
 
     assert _facing(wide_pdf) is Facing.LANDSCAPE
     assert _facing(tall_pdf) is Facing.PORTRAIT
-    assert _facing(turned_pdf) is Facing.LANDSCAPE
+    assert _facing(turned_pdf) is Facing.PORTRAIT
     assert _facing(wide_png) is Facing.LANDSCAPE
     assert _facing(tall_png) is Facing.PORTRAIT
     assert _facing(wide_docx) is Facing.LANDSCAPE
@@ -89,12 +84,6 @@ def test_landscape_and_portrait_files(tmp_path: Path) -> None:
     assert probe(wide_pdf).kind == "pdf"
     assert probe(wide_png).kind == "image"
     assert probe(wide_docx).kind == "docx"
-
-
-def test_exif_orientation_swaps_axes(tmp_path: Path) -> None:
-    path = tmp_path / "phone.jpg"
-    _write_jpeg(path, 200, 100, exif_orientation=6)
-    assert _facing(path) is Facing.PORTRAIT
 
 
 def test_square_page_is_portrait() -> None:
