@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from paperflick.core.settings import Settings, load, save
+from paperflick.core.settings import Settings, coerce_interval_seconds, load, save
 
 
 class MainWindow(ctk.CTk):
@@ -30,6 +30,7 @@ class MainWindow(ctk.CTk):
         self._interval_var = ctk.StringVar(value=str(self._settings.interval_seconds))
         self._interval_entry = ctk.CTkEntry(interval_row, textvariable=self._interval_var, width=80)
         self._interval_entry.pack(side="right")
+        self._interval_entry.bind("<KeyRelease>", self._on_interval_typed)
         self._interval_entry.bind("<FocusOut>", self._on_interval_commit)
         self._interval_entry.bind("<Return>", self._on_interval_commit)
 
@@ -51,23 +52,35 @@ class MainWindow(ctk.CTk):
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    def _read_interval(self) -> float:
+    def _on_interval_typed(self, _event: object | None = None) -> None:
         raw = self._interval_var.get().strip()
         try:
             value = float(raw)
         except ValueError:
-            value = self._settings.interval_seconds
+            return
         if value <= 0:
-            value = self._settings.interval_seconds
-        self._interval_var.set(str(value))
-        return value
+            return
+        self._settings = Settings(
+            interval_seconds=value,
+            wait_for_empty_queue=bool(self._wait_var.get()),
+            dry_run=bool(self._dry_var.get()),
+        )
+        save(self._settings)
 
     def _on_interval_commit(self, _event: object | None = None) -> None:
+        value = coerce_interval_seconds(
+            self._interval_var.get().strip(),
+            self._settings.interval_seconds,
+        )
+        self._interval_var.set(str(value))
         self._persist()
 
     def _persist(self) -> None:
         self._settings = Settings(
-            interval_seconds=self._read_interval(),
+            interval_seconds=coerce_interval_seconds(
+                self._interval_var.get().strip(),
+                self._settings.interval_seconds,
+            ),
             wait_for_empty_queue=bool(self._wait_var.get()),
             dry_run=bool(self._dry_var.get()),
         )

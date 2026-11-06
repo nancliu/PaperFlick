@@ -33,19 +33,24 @@ def settings_path() -> Path:
     return settings_dir() / _SETTINGS_FILE
 
 
+def coerce_interval_seconds(value: object, default: float = 2.0) -> float:
+    """Parse a positive interval; return ``default`` when missing, invalid, or non-positive."""
+    try:
+        parsed = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    if parsed <= 0:
+        return default
+    return parsed
+
+
 def _coerce(raw: dict[str, Any]) -> Settings:
     defaults = Settings()
     interval = raw.get("interval_seconds", defaults.interval_seconds)
     wait = raw.get("wait_for_empty_queue", defaults.wait_for_empty_queue)
     dry = raw.get("dry_run", defaults.dry_run)
-    try:
-        interval_seconds = float(interval)
-    except (TypeError, ValueError):
-        interval_seconds = defaults.interval_seconds
-    if interval_seconds <= 0:
-        interval_seconds = defaults.interval_seconds
     return Settings(
-        interval_seconds=interval_seconds,
+        interval_seconds=coerce_interval_seconds(interval, defaults.interval_seconds),
         wait_for_empty_queue=bool(wait),
         dry_run=bool(dry),
     )
