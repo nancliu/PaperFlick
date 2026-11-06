@@ -70,3 +70,5 @@ mamba run -n paperflick pytest -q tests/test_settings.py tests/test_gui_boot.py
 ```
 
 Pytest covers defaults, coerce, round-trip, KeyRelease persist, and boot smoke. Runtime skill drives the same surface for manual/agent proof beyond unit tests.
+
+CI runs `pytest -q -m "not gui"`, so `_run_*.py` window scripts can rot without failing Actions. After any `LiveSubmit` / `DocKind` change, re-run the affected `features/` scripts (or their `test_*_window.py` wrappers) locally before land.
