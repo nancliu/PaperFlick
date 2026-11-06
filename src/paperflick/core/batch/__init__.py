@@ -2,6 +2,7 @@
 
 from paperflick.core.batch.commands import (
     AddPaths,
+    ApplyScope,
     BatchCommand,
     ClearItems,
     ClearSucceeded,
@@ -9,6 +10,7 @@ from paperflick.core.batch.commands import (
     RemoveItems,
     ReprintFailed,
     ResumeBatch,
+    SetOrientation,
     StartBatch,
     StopBatch,
 )
@@ -38,6 +40,7 @@ from paperflick.core.batch.types import (
 
 __all__ = [
     "AddPaths",
+    "ApplyScope",
     "BatchCommand",
     "BatchEvent",
     "BatchPhase",
@@ -62,6 +65,7 @@ __all__ = [
     "RemoveItems",
     "ReprintFailed",
     "ResumeBatch",
+    "SetOrientation",
     "StartBatch",
     "StopBatch",
     "Unread",

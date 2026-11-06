@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 from paperflick.core.batch.prefs import BatchPrefs
-from paperflick.core.batch.types import ItemId
+from paperflick.core.batch.types import ItemId, Orientation
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,11 +67,37 @@ class ClearSucceeded:
     """Remove SUCCESS rows. FAILED, WAITING, and PRINTING rows stay."""
 
 
+class ApplyScope(Enum):
+    """Which existing Print Items a preview orientation applies to."""
+
+    THIS = "this"
+    SAME_KIND = "same_kind"
+    ALL = "all"
+
+
+@dataclass(frozen=True, slots=True)
+class SetOrientation:
+    """Set one Orientation on a scope of existing Print Items.
+
+    ``anchor`` is the previewed row. ``THIS`` updates that row. ``SAME_KIND``
+    updates every row with the anchor's kind, including the anchor. Both no-op
+    when the anchor is gone. ``ALL`` updates every current row and does not
+    require the anchor to still exist.
+
+    New rows stay Auto. ``PrintItem.added`` never reads this command.
+    """
+
+    anchor: ItemId
+    orientation: Orientation
+    scope: ApplyScope
+
+
 BatchCommand = (
     AddPaths
     | RemoveItems
     | ClearItems
     | ClearSucceeded
+    | SetOrientation
     | StartBatch
     | ReprintFailed
     | PauseBatch

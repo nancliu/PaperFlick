@@ -8,17 +8,21 @@ import customtkinter as ctk
 
 from paperflick.core.batch import (
     AddPaths,
+    ApplyScope,
     BatchEvent,
     BatchPhase,
     BatchPrefs,
     BatchSession,
     BatchSnapshot,
     ClearSucceeded,
+    ItemId,
     ItemStatus,
+    Orientation,
     PauseBatch,
     RemoveItems,
     ReprintFailed,
     ResumeBatch,
+    SetOrientation,
     StartBatch,
     StopBatch,
 )
@@ -31,6 +35,7 @@ from paperflick.core.submit import (
     SubmitScript,
 )
 from paperflick.ui.item_list import ItemListPanel
+from paperflick.ui.preview_window import PreviewWindow
 from paperflick.ui.printer_sidebar import PrinterSidebar
 
 
@@ -63,6 +68,7 @@ class MainWindow(ctk.CTk):
         )
         self._session.subscribe(self._on_batch_event)
         self._after_handles: set[str] = set()
+        self._preview: PreviewWindow | None = None
 
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("blue")
@@ -128,7 +134,10 @@ class MainWindow(ctk.CTk):
         )
         ctk.CTkButton(
             list_toolbar, text="移除所选", width=90, command=self._on_remove_selected
-        ).pack(side="left")
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(list_toolbar, text="预览", width=70, command=self._on_preview).pack(
+            side="left"
+        )
 
         fail_toolbar = ctk.CTkFrame(root, fg_color="transparent")
         fail_toolbar.pack(fill="x", pady=(0, 4))
@@ -196,6 +205,49 @@ class MainWindow(ctk.CTk):
         if not ids:
             return
         self._session.apply(RemoveItems(ids))
+
+    def _on_preview(self) -> None:
+        """Open a preview for the single checked Print Item."""
+        ids = self._item_list.selected_ids()
+        if len(ids) != 1:
+            self._status_label.configure(text="请只勾选一个打印项再预览")
+            return
+        anchor = ids[0]
+        item = next((row for row in self._session.snapshot().items if row.id == anchor), None)
+        if item is None:
+            self._status_label.configure(text="请只勾选一个打印项再预览")
+            return
+        self._close_preview()
+        self._preview = PreviewWindow(self, item, self._apply_orientation)
+        self._status_label.configure(text="")
+
+    def _apply_orientation(
+        self, anchor: ItemId, orientation: Orientation, scope: ApplyScope
+    ) -> bool:
+        """Apply a preview command. Refuse this-item and same-kind when the row is gone.
+
+        A no-op SetOrientation (same policy already on every targeted row) returns
+        False so the preview stays open and status text is left alone.
+        """
+        if scope is not ApplyScope.ALL:
+            present = any(row.id == anchor for row in self._session.snapshot().items)
+            if not present:
+                self._status_label.configure(text="预览的打印项已不在列表中")
+                return False
+        before = {row.id: row.orientation for row in self._session.snapshot().items}
+        self._session.apply(SetOrientation(anchor=anchor, orientation=orientation, scope=scope))
+        after = {row.id: row.orientation for row in self._session.snapshot().items}
+        if before == after:
+            return False
+        self._status_label.configure(text="")
+        return True
+
+    def _close_preview(self) -> None:
+        """Destroy an open preview, if any."""
+        preview = self._preview
+        if preview is not None and preview.winfo_exists():
+            preview.destroy()
+        self._preview = None
 
     def _on_select_only_failed(self) -> None:
         failed = self._session.snapshot().ids_with(ItemStatus.FAILED)

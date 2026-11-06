@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import replace
+from typing import assert_never
 
 from paperflick.core.batch.commands import (
     AddPaths,
+    ApplyScope,
     BatchCommand,
     ClearItems,
     ClearSucceeded,
@@ -14,6 +16,7 @@ from paperflick.core.batch.commands import (
     RemoveItems,
     ReprintFailed,
     ResumeBatch,
+    SetOrientation,
     StartBatch,
     StopBatch,
 )
@@ -25,11 +28,11 @@ from paperflick.core.batch.events import (
 )
 from paperflick.core.batch.path_intake import expand_paths
 from paperflick.core.batch.state import BatchState, count_statuses
-from paperflick.core.batch.types import BatchPhase, ItemStatus, PrintItem
+from paperflick.core.batch.types import BatchPhase, ItemId, ItemStatus, PrintItem
 
 
 def reduce(state: BatchState, command: BatchCommand) -> tuple[BatchState, list[BatchEvent]]:
-    """Apply one command. Idempotent for duplicate Pause/Stop/Resume/Start."""
+    """Apply one command. Repeat Pause, Stop, Resume, Start, or SetOrientation is a no-op."""
     if isinstance(command, AddPaths):
         return _add_paths(state, command)
     if isinstance(command, RemoveItems):
@@ -38,6 +41,8 @@ def reduce(state: BatchState, command: BatchCommand) -> tuple[BatchState, list[B
         return _clear_items(state)
     if isinstance(command, ClearSucceeded):
         return _clear_succeeded(state)
+    if isinstance(command, SetOrientation):
+        return _set_orientation(state, command)
     if isinstance(command, StartBatch):
         return _start(state, command)
     if isinstance(command, ReprintFailed):
@@ -83,6 +88,47 @@ def _clear_items(state: BatchState) -> tuple[BatchState, list[BatchEvent]]:
 
 def _clear_succeeded(state: BatchState) -> tuple[BatchState, list[BatchEvent]]:
     return _retain(state, lambda item: item.status is not ItemStatus.SUCCESS)
+
+
+def _find_item(items: list[PrintItem], item_id: ItemId) -> PrintItem | None:
+    """Return the row with ``item_id``, or None when the preview target is gone."""
+    for item in items:
+        if item.id == item_id:
+            return item
+    return None
+
+
+def _in_orientation_scope(item: PrintItem, scope: ApplyScope, anchor: PrintItem | None) -> bool:
+    """Whether ``item`` receives the preview orientation."""
+    if scope is ApplyScope.ALL:
+        return True
+    if anchor is None:
+        return False
+    if scope is ApplyScope.THIS:
+        return item.id == anchor.id
+    if scope is ApplyScope.SAME_KIND:
+        return item.kind == anchor.kind
+    assert_never(scope)
+
+
+def _set_orientation(
+    state: BatchState, command: SetOrientation
+) -> tuple[BatchState, list[BatchEvent]]:
+    """Write ``command.orientation`` onto the scope. Unchanged rows emit nothing."""
+    anchor = _find_item(state.items, command.anchor)
+    items = list(state.items)
+    changed = False
+    for index, item in enumerate(items):
+        if not _in_orientation_scope(item, command.scope, anchor):
+            continue
+        if item.orientation is command.orientation:
+            continue
+        items[index] = replace(item, orientation=command.orientation)
+        changed = True
+    if not changed:
+        return state, []
+    state.items = items
+    return state, [ItemsChanged()]
 
 
 def _retain(
