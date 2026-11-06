@@ -17,17 +17,19 @@ from paperflick.core.batch import (
     StartBatch,
     StopBatch,
 )
+from paperflick.core.printers import list_installed_printers, selected_printer_for_persist
 from paperflick.core.settings import Settings, coerce_interval_seconds, load, save
 from paperflick.core.submit import StartNeedsDryRunError
 from paperflick.ui.item_list import ItemListPanel
+from paperflick.ui.printer_sidebar import PrinterSidebar
 
 
 class MainWindow(ctk.CTk):
     def __init__(self, settings: Settings | None = None) -> None:
         super().__init__()
         self.title("PaperFlick")
-        self.geometry("640x520")
-        self.minsize(480, 420)
+        self.geometry("780x520")
+        self.minsize(640, 420)
 
         self._settings = settings if settings is not None else load()
         self._session = BatchSession(
@@ -40,8 +42,23 @@ class MainWindow(ctk.CTk):
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("blue")
 
-        root = ctk.CTkFrame(self, fg_color="transparent")
-        root.pack(fill="both", expand=True, padx=20, pady=16)
+        body = ctk.CTkFrame(self, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=12, pady=12)
+        body.grid_columnconfigure(1, weight=1)
+        body.grid_rowconfigure(0, weight=1)
+
+        printers = list_installed_printers()
+        self._printer_sidebar = PrinterSidebar(
+            body,
+            printers=printers,
+            selected=self._settings.selected_printer,
+            on_select=self._on_printer_selected,
+            width=200,
+        )
+        self._printer_sidebar.grid(row=0, column=0, sticky="nsw", padx=(0, 12))
+
+        root = ctk.CTkFrame(body, fg_color="transparent")
+        root.grid(row=0, column=1, sticky="nsew")
 
         ctk.CTkLabel(root, text="纸闪 PaperFlick", font=ctk.CTkFont(size=18, weight="bold")).pack(
             anchor="w", pady=(0, 12)
@@ -176,6 +193,16 @@ class MainWindow(ctk.CTk):
             )
         )
 
+    def _on_printer_selected(self, name: str) -> None:
+        self._printer_sidebar.apply_selection(name)
+        self._persist()
+
+    def _selected_printer_for_persist(self) -> str | None:
+        return selected_printer_for_persist(
+            self._printer_sidebar.selected_name(),
+            self._settings.selected_printer,
+        )
+
     def _on_interval_typed(self, _event: object | None = None) -> None:
         raw = self._interval_var.get().strip()
         try:
@@ -188,6 +215,7 @@ class MainWindow(ctk.CTk):
             interval_seconds=value,
             wait_for_empty_queue=bool(self._wait_var.get()),
             dry_run=bool(self._dry_var.get()),
+            selected_printer=self._selected_printer_for_persist(),
         )
         save(self._settings)
 
@@ -207,6 +235,7 @@ class MainWindow(ctk.CTk):
             ),
             wait_for_empty_queue=bool(self._wait_var.get()),
             dry_run=bool(self._dry_var.get()),
+            selected_printer=self._selected_printer_for_persist(),
         )
         save(self._settings)
 
