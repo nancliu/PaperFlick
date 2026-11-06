@@ -7,7 +7,7 @@ from dataclasses import replace
 from typing import Any
 
 from paperflick.core.batch.clock import CancelAfter, ManualClock, ScheduleAfter
-from paperflick.core.batch.commands import BatchCommand, starting_batch
+from paperflick.core.batch.commands import BatchCommand
 from paperflick.core.batch.events import (
     BatchEvent,
     CountsChanged,
@@ -21,7 +21,6 @@ from paperflick.core.batch.state import BatchSnapshot, BatchState, count_statuse
 from paperflick.core.batch.types import BatchPhase, ItemStatus, PrintItem
 from paperflick.core.submit import (
     PrintSubmitPort,
-    StartNeedsDryRunError,
     SubmitFailed,
     SubmitOk,
     SubmitRequest,
@@ -86,12 +85,6 @@ class BatchSession:
 
     def apply(self, command: BatchCommand) -> None:
         """Apply a user command. May schedule clock work for Start/Resume."""
-        start = starting_batch(command)
-        if start is not None and not start.prefs.dry_run:
-            raise StartNeedsDryRunError(
-                "Enable Dry Run before Start. Real print is not available yet."
-            )
-
         was_idle = self._state.phase is BatchPhase.IDLE
         events: list[BatchEvent]
         self._state, events = reduce(self._state, command)

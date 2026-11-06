@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 
 import customtkinter as ctk
 
@@ -31,8 +31,9 @@ from paperflick.core.settings import Settings, coerce_interval_seconds, load, sa
 from paperflick.core.submit import (
     DryRunSubmit,
     PrintSubmitPort,
-    StartNeedsDryRunError,
     SubmitScript,
+    SumatraRunner,
+    choose_submit_port,
 )
 from paperflick.ui.item_list import ItemListPanel
 from paperflick.ui.preview_window import PreviewWindow
@@ -48,11 +49,26 @@ def _dry_run_factory(script: SubmitScript) -> Callable[[BatchPrefs], PrintSubmit
     return factory
 
 
+def _sumatra_factory(
+    executable: Path | None,
+    run: SumatraRunner | None,
+) -> Callable[[BatchPrefs], PrintSubmitPort]:
+    """Build a port per Start. Dry Run still skips Sumatra."""
+
+    def factory(prefs: BatchPrefs) -> PrintSubmitPort:
+        return choose_submit_port(prefs, executable=executable, run=run)
+
+    return factory
+
+
 class MainWindow(ctk.CTk):
     def __init__(
         self,
         settings: Settings | None = None,
         submit_script: SubmitScript | None = None,
+        *,
+        sumatra_executable: Path | None = None,
+        sumatra_run: SumatraRunner | None = None,
     ) -> None:
         super().__init__()
         self.title("PaperFlick")
@@ -60,7 +76,12 @@ class MainWindow(ctk.CTk):
         self.minsize(640, 420)
 
         self._settings = settings if settings is not None else load()
-        submit_factory = _dry_run_factory(submit_script) if submit_script is not None else None
+        if submit_script is not None:
+            submit_factory = _dry_run_factory(submit_script)
+        elif sumatra_executable is None and sumatra_run is None:
+            submit_factory = None
+        else:
+            submit_factory = _sumatra_factory(sumatra_executable, sumatra_run)
         self._session = BatchSession(
             submit_factory=submit_factory,
             schedule_after=self._tk_schedule,
@@ -260,11 +281,7 @@ class MainWindow(ctk.CTk):
             return
         failed = before.ids_with(ItemStatus.FAILED)
         prefs = BatchPrefs.from_settings(self._settings)
-        try:
-            self._session.apply(ReprintFailed(StartBatch(prefs=prefs)))
-        except StartNeedsDryRunError as exc:
-            self._show_start_error(exc)
-            return
+        self._session.apply(ReprintFailed(StartBatch(prefs=prefs)))
         self._item_list.check_only(failed)
         self._status_label.configure(text="")
 
@@ -274,16 +291,8 @@ class MainWindow(ctk.CTk):
     def _on_start(self) -> None:
         self._persist()
         prefs = BatchPrefs.from_settings(self._settings)
-        try:
-            self._session.apply(StartBatch(prefs=prefs))
-        except StartNeedsDryRunError as exc:
-            self._show_start_error(exc)
-            return
+        self._session.apply(StartBatch(prefs=prefs))
         self._status_label.configure(text="")
-
-    def _show_start_error(self, exc: Exception) -> None:
-        self._status_label.configure(text=str(exc))
-        messagebox.showinfo("无法开始", str(exc), parent=self)
 
     def _on_pause(self) -> None:
         self._session.apply(PauseBatch())

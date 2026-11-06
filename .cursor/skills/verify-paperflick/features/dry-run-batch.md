@@ -6,7 +6,7 @@ Add Print Items, enable Dry Run, Start a Batch. Statuses advance Waiting → Suc
 
 - `add-remove` populates and edits the Print Item list from files or folders.
 - `dry-run-start` advances rows serially when Dry Run is on.
-- `start-refuses-without-dry-run` shows a clear message when Dry Run is off.
+- `start-with-dry-run-off` submits PDF Print Items. See [PDF real print](./pdf-real-print.md).
 - `pause-stop` freezes or ends advancement without submitting Print Jobs.
 
 ## How to get to it (user POV)
@@ -23,10 +23,10 @@ Preconditions:
 - **Add paths.** Call `_session.apply(AddPaths([...]))` or drive the Add buttons with real files under a temp dir.
 - **Enable Dry Run.** Set `_dry_var` true and `_persist`.
 - **Start.** `_on_start()`. Snapshot success count rises as Tk `after` ticks (or use a session with `ManualClock` in unit tests).
-- **Refuse.** With Dry Run off, `_on_start()` leaves phase idle and surfaces the Dry Run required message.
+- **Dry Run off.** PDF submit is specified in [PDF real print](./pdf-real-print.md). This feature only proves the Dry Run path sends no command.
 - **Proof.** Unit: `pytest tests/test_batch_dry_run.py`. GUI smoke still covered by existing boot test.
 
 ## Gotchas
 
-- Wave 1 has no real print sink; Start without Dry Run must refuse.
+- Dry Run off no longer refuses Start. It submits PDF Print Items.
 - Interval ticks use Tk `after` in the live window; core tests inject `ManualClock`.

@@ -23,8 +23,7 @@ from paperflick.core.batch import (
     Unread,
     resolve_facing,
 )
-from paperflick.core.submit import DryRunSubmit, StartNeedsDryRunError, SubmitOk, SubmitRequest
-from paperflick.core.submit.dry_run import choose_submit_port
+from paperflick.core.submit import DryRunSubmit, SubmitOk, SubmitRequest, choose_submit_port
 
 
 def _prefs(*, dry_run: bool = True, interval: float = 0.01) -> BatchPrefs:
@@ -125,13 +124,6 @@ def test_pause_and_stop(tmp_path: Path) -> None:
     assert snap.waiting_count == 2
 
 
-def test_start_without_dry_run_refuses() -> None:
-    session = BatchSession()
-    with pytest.raises(StartNeedsDryRunError, match="Dry Run"):
-        session.apply(StartBatch(_prefs(dry_run=False)))
-    assert session.snapshot().phase is BatchPhase.IDLE
-
-
 def test_second_start_while_running_is_noop(tmp_path: Path) -> None:
     session = BatchSession()
     clock = session.manual_clock
@@ -150,6 +142,11 @@ def test_dry_run_submit_never_calls_win32(monkeypatch: pytest.MonkeyPatch, tmp_p
     monkeypatch.setitem(__import__("sys").modules, "win32print", fake_win32)
     monkeypatch.setitem(__import__("sys").modules, "win32api", fake_win32)
 
+    def _refuse_process(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("Dry Run must not start a process")
+
+    monkeypatch.setattr("subprocess.run", _refuse_process)
+
     path = _touch(tmp_path / "x.pdf")
     port = DryRunSubmit()
     from paperflick.core.batch.formats import DocKind, Probe
@@ -162,8 +159,3 @@ def test_dry_run_submit_never_calls_win32(monkeypatch: pytest.MonkeyPatch, tmp_p
     again = choose_submit_port(_prefs(dry_run=True)).submit(SubmitRequest(item=item, printer=None))
     assert isinstance(again, SubmitOk)
     fake_win32.assert_not_called()
-
-
-def test_choose_submit_port_rejects_non_dry_run() -> None:
-    with pytest.raises(StartNeedsDryRunError):
-        choose_submit_port(_prefs(dry_run=False))
