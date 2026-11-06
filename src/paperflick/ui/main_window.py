@@ -29,6 +29,7 @@ from paperflick.core.batch import (
 from paperflick.core.printers import list_installed_printers, selected_printer_for_persist
 from paperflick.core.settings import Settings, coerce_interval_seconds, load, save
 from paperflick.core.submit import (
+    DeviceFactory,
     DryRunSubmit,
     PrintSubmitPort,
     SubmitScript,
@@ -49,14 +50,20 @@ def _dry_run_factory(script: SubmitScript) -> Callable[[BatchPrefs], PrintSubmit
     return factory
 
 
-def _sumatra_factory(
+def _port_factory(
     executable: Path | None,
     run: SumatraRunner | None,
+    devices: DeviceFactory | None,
 ) -> Callable[[BatchPrefs], PrintSubmitPort]:
-    """Build a port per Start. Dry Run still skips Sumatra."""
+    """Build a port per Start. Dry Run still skips Sumatra and the spooler."""
 
     def factory(prefs: BatchPrefs) -> PrintSubmitPort:
-        return choose_submit_port(prefs, executable=executable, run=run)
+        return choose_submit_port(
+            prefs,
+            executable=executable,
+            run=run,
+            devices=devices,
+        )
 
     return factory
 
@@ -69,6 +76,7 @@ class MainWindow(ctk.CTk):
         *,
         sumatra_executable: Path | None = None,
         sumatra_run: SumatraRunner | None = None,
+        image_devices: DeviceFactory | None = None,
     ) -> None:
         super().__init__()
         self.title("PaperFlick")
@@ -78,10 +86,10 @@ class MainWindow(ctk.CTk):
         self._settings = settings if settings is not None else load()
         if submit_script is not None:
             submit_factory = _dry_run_factory(submit_script)
-        elif sumatra_executable is None and sumatra_run is None:
+        elif sumatra_executable is None and sumatra_run is None and image_devices is None:
             submit_factory = None
         else:
-            submit_factory = _sumatra_factory(sumatra_executable, sumatra_run)
+            submit_factory = _port_factory(sumatra_executable, sumatra_run, image_devices)
         self._session = BatchSession(
             submit_factory=submit_factory,
             schedule_after=self._tk_schedule,
