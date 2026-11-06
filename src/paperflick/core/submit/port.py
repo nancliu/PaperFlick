@@ -7,6 +7,8 @@ from typing import Protocol
 
 from paperflick.core.batch.types import PrintItem
 
+REASON_UNSUPPORTED = "该格式暂不支持打印"
+
 
 @dataclass(frozen=True, slots=True)
 class SubmitRequest:

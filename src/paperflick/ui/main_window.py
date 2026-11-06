@@ -54,8 +54,9 @@ def _port_factory(
     executable: Path | None,
     run: SumatraRunner | None,
     devices: DeviceFactory | None,
+    docx: PrintSubmitPort | None,
 ) -> Callable[[BatchPrefs], PrintSubmitPort]:
-    """Build a port per Start. Dry Run still skips Sumatra and the spooler."""
+    """Build a port per Start. Dry Run still skips the live engines."""
 
     def factory(prefs: BatchPrefs) -> PrintSubmitPort:
         return choose_submit_port(
@@ -63,6 +64,7 @@ def _port_factory(
             executable=executable,
             run=run,
             devices=devices,
+            docx=docx,
         )
 
     return factory
@@ -77,6 +79,7 @@ class MainWindow(ctk.CTk):
         sumatra_executable: Path | None = None,
         sumatra_run: SumatraRunner | None = None,
         image_devices: DeviceFactory | None = None,
+        docx_submit: PrintSubmitPort | None = None,
     ) -> None:
         super().__init__()
         self.title("PaperFlick")
@@ -86,10 +89,20 @@ class MainWindow(ctk.CTk):
         self._settings = settings if settings is not None else load()
         if submit_script is not None:
             submit_factory = _dry_run_factory(submit_script)
-        elif sumatra_executable is None and sumatra_run is None and image_devices is None:
+        elif (
+            sumatra_executable is None
+            and sumatra_run is None
+            and image_devices is None
+            and docx_submit is None
+        ):
             submit_factory = None
         else:
-            submit_factory = _port_factory(sumatra_executable, sumatra_run, image_devices)
+            submit_factory = _port_factory(
+                sumatra_executable,
+                sumatra_run,
+                image_devices,
+                docx_submit,
+            )
         self._session = BatchSession(
             submit_factory=submit_factory,
             schedule_after=self._tk_schedule,

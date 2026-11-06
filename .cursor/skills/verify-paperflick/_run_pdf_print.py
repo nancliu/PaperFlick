@@ -80,11 +80,11 @@ def _prove_real_pdf_print(
     root: Path,
     calls: list[tuple[float, list[str]]],
 ) -> None:
-    """Dry Run off sends landscape then portrait and keeps going after a DOCX."""
+    """Dry Run off sends landscape then portrait and keeps going after an image."""
     _write_pdf(root / "wide.pdf", 200, 100)
     _write_pdf(root / "tall.pdf", 100, 200)
-    docx = root / "note.docx"
-    docx.write_bytes(b"not-a-docx")
+    image = root / "note.png"
+    image.write_bytes(b"not-a-png")
     app._dry_var.set(False)
     app._interval_var.set("0.4")
     app._on_interval_commit()
@@ -92,7 +92,7 @@ def _prove_real_pdf_print(
     saved = load()
     assert saved.dry_run is False
     assert saved.interval_seconds == 0.4
-    app._session.apply(AddPaths([root / "wide.pdf", docx, root / "tall.pdf"]))
+    app._session.apply(AddPaths([root / "wide.pdf", image, root / "tall.pdf"]))
     app._on_start()
     _wait_idle(app)
     snap = app._session.snapshot()

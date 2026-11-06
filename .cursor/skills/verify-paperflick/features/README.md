@@ -24,3 +24,4 @@ Maintained source for verifying user-facing PaperFlick behavior. Read this index
 - [Preview orientation](./preview-orientation.md) covers Landscape, Portrait, and PrinterDefault applied to this item, the same type, or all.
 - [PDF real print](./pdf-real-print.md) covers SumatraPDF submit with Dry Run off, interval, orientation, and a missing engine.
 - [Image real print](./image-real-print.md) covers Pillow and Windows submit with Dry Run off, interval, orientation, and a failed image that does not stop the Batch.
+- [DOCX real print](./docx-real-print.md) covers Word, then OnlyOffice, with Dry Run off. An item that both engines reject stays failed and the Batch continues.
