@@ -19,3 +19,4 @@ Maintained source for verifying user-facing PaperFlick behavior. Read this index
 
 - [Boot window and settings](./boot-settings.md) covers launch, defaults, and AppData persistence.
 - [Interval and Dry Run controls](./interval-and-dry-run.md) covers symmetric persistence of toggles and interval.
+- [Printer sidebar](./printer-sidebar.md) covers installed printer listing and `selected_printer` persistence.

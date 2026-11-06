@@ -6,12 +6,15 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from paperflick.core.printers import brand_printer_name
+
 
 @dataclass
 class Settings:
     interval_seconds: float = 2.0
     wait_for_empty_queue: bool = False
     dry_run: bool = False
+    selected_printer: str | None = None
 
 
 _APP_DIR_NAME = "PaperFlick"
@@ -49,10 +52,12 @@ def _coerce(raw: dict[str, Any]) -> Settings:
     interval = raw.get("interval_seconds", defaults.interval_seconds)
     wait = raw.get("wait_for_empty_queue", defaults.wait_for_empty_queue)
     dry = raw.get("dry_run", defaults.dry_run)
+    selected = brand_printer_name(raw.get("selected_printer", defaults.selected_printer))
     return Settings(
         interval_seconds=coerce_interval_seconds(interval, defaults.interval_seconds),
         wait_for_empty_queue=bool(wait),
         dry_run=bool(dry),
+        selected_printer=selected,
     )
 
 
