@@ -298,6 +298,26 @@ def test_corrupt_image_records_a_reason_without_opening_a_printer(tmp_path: Path
     assert opened == []
 
 
+def test_decode_value_error_fails_the_item_not_the_batch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "odd.png"
+    Image.new("RGB", (10, 10), color=(1, 1, 1)).save(path)
+    opened: list[_Page] = []
+
+    def _boom(_path: object) -> object:
+        raise ValueError("synthetic decode failure")
+
+    monkeypatch.setattr("paperflick.core.submit.image_win.Image.open", _boom)
+    result = ImageWinSubmit(devices=_factory(opened)).submit(
+        SubmitRequest(item=_image_item(path), printer="HP Laser")
+    )
+    assert isinstance(result, SubmitFailed)
+    assert result.reason.startswith("图片无法打开")
+    assert "synthetic decode failure" in result.reason
+    assert opened == []
+
+
 def test_missing_file_fails_before_the_printer(tmp_path: Path) -> None:
     opened: list[_Page] = []
     result = ImageWinSubmit(devices=_factory(opened)).submit(

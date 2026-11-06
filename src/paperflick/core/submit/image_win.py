@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Protocol, assert_never
 
 from PIL import Image
-from PIL.Image import DecompressionBombError
 
 from paperflick.core.batch.formats import DocKind
 from paperflick.core.batch.types import Facing, resolve_facing
@@ -184,7 +183,8 @@ class ImageWinSubmit:
             return SubmitFailed(REASON_UNSUPPORTED)
         try:
             sheet = _rgb_sheet(request.item.path)
-        except (OSError, DecompressionBombError) as exc:
+        except Exception as exc:
+            # Pillow may raise UnidentifiedImageError / ValueError / etc.; keep the Batch moving.
             return SubmitFailed(_with_detail(REASON_IMAGE_OPEN, str(exc)))
         try:
             printer = resolve_printer_name(request.printer, self._default_printer)
