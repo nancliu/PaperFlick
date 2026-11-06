@@ -1,5 +1,3 @@
-"""Persisted application settings."""
-
 from __future__ import annotations
 
 import json
@@ -11,8 +9,6 @@ from typing import Any
 
 @dataclass
 class Settings:
-    """User-facing print pacing and safety toggles."""
-
     interval_seconds: float = 2.0
     wait_for_empty_queue: bool = False
     dry_run: bool = False
@@ -24,11 +20,6 @@ _APPDATA_ENV = "PAPERFLICK_APPDATA"
 
 
 def settings_dir() -> Path:
-    """Return the directory that holds settings.json.
-
-    Override with ``PAPERFLICK_APPDATA`` (absolute path) for tests or portable
-    installs. Otherwise uses ``%APPDATA%\\PaperFlick``.
-    """
     override = os.environ.get(_APPDATA_ENV)
     if override:
         return Path(override)
@@ -39,7 +30,6 @@ def settings_dir() -> Path:
 
 
 def settings_path() -> Path:
-    """Return the full path to settings.json."""
     return settings_dir() / _SETTINGS_FILE
 
 
@@ -62,7 +52,6 @@ def _coerce(raw: dict[str, Any]) -> Settings:
 
 
 def load() -> Settings:
-    """Load settings from disk, or return defaults if missing/corrupt."""
     path = settings_path()
     if not path.is_file():
         return Settings()
@@ -77,7 +66,6 @@ def load() -> Settings:
 
 
 def save(settings: Settings) -> None:
-    """Write settings to disk, creating the app directory if needed."""
     directory = settings_dir()
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / _SETTINGS_FILE

@@ -1,5 +1,3 @@
-"""Main application window."""
-
 from __future__ import annotations
 
 import customtkinter as ctk
@@ -8,8 +6,6 @@ from paperflick.core.settings import Settings, load, save
 
 
 class MainWindow(ctk.CTk):
-    """Boot window with interval, queue-wait, and dry-run controls."""
-
     def __init__(self, settings: Settings | None = None) -> None:
         super().__init__()
         self.title("PaperFlick")
@@ -83,6 +79,5 @@ class MainWindow(ctk.CTk):
 
 
 def run() -> None:
-    """Create the main window and enter the Tk event loop."""
     app = MainWindow()
     app.mainloop()
