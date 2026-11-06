@@ -17,15 +17,21 @@ from paperflick.core.batch.events import (
     ItemStatusChanged,
     PhaseChanged,
 )
+from paperflick.core.batch.formats import DocKind
 from paperflick.core.batch.prefs import BatchPrefs
 from paperflick.core.batch.session import BatchSession
 from paperflick.core.batch.state import BatchSnapshot
 from paperflick.core.batch.types import (
     BatchPhase,
+    Facing,
     ItemId,
     ItemStatus,
+    Measured,
     Orientation,
+    PageShape,
     PrintItem,
+    Unread,
+    resolve_facing,
 )
 
 __all__ = [
@@ -38,11 +44,15 @@ __all__ = [
     "BatchSnapshot",
     "ClearItems",
     "CountsChanged",
+    "DocKind",
+    "Facing",
     "ItemId",
     "ItemStatus",
     "ItemStatusChanged",
     "ItemsChanged",
+    "Measured",
     "Orientation",
+    "PageShape",
     "PauseBatch",
     "PhaseChanged",
     "PrintItem",
@@ -50,4 +60,6 @@ __all__ = [
     "ResumeBatch",
     "StartBatch",
     "StopBatch",
+    "Unread",
+    "resolve_facing",
 ]

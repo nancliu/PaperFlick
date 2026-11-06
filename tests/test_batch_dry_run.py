@@ -12,12 +12,16 @@ from paperflick.core.batch import (
     BatchPhase,
     BatchPrefs,
     BatchSession,
+    Facing,
     ItemStatus,
+    Orientation,
     PauseBatch,
     RemoveItems,
     ResumeBatch,
     StartBatch,
     StopBatch,
+    Unread,
+    resolve_facing,
 )
 from paperflick.core.submit import DryRunSubmit, StartNeedsDryRunError, SubmitRequest
 from paperflick.core.submit.dry_run import choose_submit_port
@@ -53,8 +57,15 @@ def test_add_files_and_folder_populate_list(tmp_path: Path) -> None:
     names = sorted(item.path.name for item in snap.items)
     assert names == ["a.pdf", "b.docx", "c.png", "d.txt"]
     assert all(item.status is ItemStatus.WAITING for item in snap.items)
-    assert snap.items[0].kind == "pdf"
+    assert all(item.orientation is Orientation.AUTO for item in snap.items)
+    pdf_item = snap.items[0]
+    assert pdf_item.kind == "pdf"
+    assert isinstance(pdf_item.shape, Unread)
+    assert resolve_facing(pdf_item.orientation, pdf_item.shape) is Facing.PORTRAIT
     assert {item.kind for item in snap.items if item.path.name == "c.png"} == {"image"}
+    txt_item = next(item for item in snap.items if item.path.name == "d.txt")
+    assert txt_item.kind == "unknown"
+    assert isinstance(txt_item.shape, Unread)
 
 
 def test_remove_selected_items(tmp_path: Path) -> None:
@@ -140,17 +151,10 @@ def test_dry_run_submit_never_calls_win32(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setitem(__import__("sys").modules, "win32api", fake_win32)
 
     port = DryRunSubmit()
-    from uuid import uuid4
+    from paperflick.core.batch.formats import DocKind, Probe
+    from paperflick.core.batch.types import PrintItem
 
-    from paperflick.core.batch.types import ItemId, Orientation, PrintItem
-
-    item = PrintItem(
-        id=ItemId(uuid4()),
-        path=Path("x.pdf"),
-        kind="pdf",
-        orientation=Orientation.AUTO,
-        status=ItemStatus.WAITING,
-    )
+    item = PrintItem.added(Path("x.pdf"), Probe(DocKind.PDF, Unread("not read")))
     result = port.submit(SubmitRequest(item=item, printer=None))
     assert result.ok is True
     fake_win32.assert_not_called()
