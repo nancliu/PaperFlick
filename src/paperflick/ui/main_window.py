@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
@@ -11,28 +12,51 @@ from paperflick.core.batch import (
     BatchPrefs,
     BatchSession,
     BatchSnapshot,
+    ClearSucceeded,
+    ItemStatus,
     PauseBatch,
     RemoveItems,
+    ReprintFailed,
     ResumeBatch,
     StartBatch,
     StopBatch,
 )
 from paperflick.core.printers import list_installed_printers, selected_printer_for_persist
 from paperflick.core.settings import Settings, coerce_interval_seconds, load, save
-from paperflick.core.submit import StartNeedsDryRunError
+from paperflick.core.submit import (
+    DryRunSubmit,
+    PrintSubmitPort,
+    StartNeedsDryRunError,
+    SubmitScript,
+)
 from paperflick.ui.item_list import ItemListPanel
 from paperflick.ui.printer_sidebar import PrinterSidebar
 
 
+def _dry_run_factory(script: SubmitScript) -> Callable[[BatchPrefs], PrintSubmitPort]:
+    """Reuse one script for every Start this window makes."""
+
+    def factory(_prefs: BatchPrefs) -> PrintSubmitPort:
+        return DryRunSubmit(script)
+
+    return factory
+
+
 class MainWindow(ctk.CTk):
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        submit_script: SubmitScript | None = None,
+    ) -> None:
         super().__init__()
         self.title("PaperFlick")
         self.geometry("780x520")
         self.minsize(640, 420)
 
         self._settings = settings if settings is not None else load()
+        submit_factory = _dry_run_factory(submit_script) if submit_script is not None else None
         self._session = BatchSession(
+            submit_factory=submit_factory,
             schedule_after=self._tk_schedule,
             cancel_after=self._tk_cancel,
         )
@@ -105,6 +129,18 @@ class MainWindow(ctk.CTk):
             list_toolbar, text="移除所选", width=90, command=self._on_remove_selected
         ).pack(side="left")
 
+        fail_toolbar = ctk.CTkFrame(root, fg_color="transparent")
+        fail_toolbar.pack(fill="x", pady=(0, 4))
+        ctk.CTkButton(
+            fail_toolbar, text="只勾选失败项", width=120, command=self._on_select_only_failed
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            fail_toolbar, text="重新打印失败项", width=130, command=self._on_reprint_failed
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            fail_toolbar, text="清除已成功", width=110, command=self._on_clear_succeeded
+        ).pack(side="left")
+
         self._item_list = ItemListPanel(root)
         self._item_list.pack(fill="both", expand=True, pady=4)
 
@@ -160,16 +196,38 @@ class MainWindow(ctk.CTk):
             return
         self._session.apply(RemoveItems(ids))
 
+    def _on_select_only_failed(self) -> None:
+        failed = self._session.snapshot().ids_with(ItemStatus.FAILED)
+        self._item_list.check_only(failed)
+
+    def _on_reprint_failed(self) -> None:
+        self._persist()
+        failed = self._session.snapshot().ids_with(ItemStatus.FAILED)
+        prefs = BatchPrefs.from_settings(self._settings)
+        try:
+            self._session.apply(ReprintFailed(StartBatch(prefs=prefs)))
+        except StartNeedsDryRunError as exc:
+            self._show_start_error(exc)
+            return
+        self._item_list.check_only(failed)
+        self._status_label.configure(text="")
+
+    def _on_clear_succeeded(self) -> None:
+        self._session.apply(ClearSucceeded())
+
     def _on_start(self) -> None:
         self._persist()
         prefs = BatchPrefs.from_settings(self._settings)
         try:
             self._session.apply(StartBatch(prefs=prefs))
         except StartNeedsDryRunError as exc:
-            self._status_label.configure(text=str(exc))
-            messagebox.showinfo("无法开始", str(exc), parent=self)
+            self._show_start_error(exc)
             return
         self._status_label.configure(text="")
+
+    def _show_start_error(self, exc: Exception) -> None:
+        self._status_label.configure(text=str(exc))
+        messagebox.showinfo("无法开始", str(exc), parent=self)
 
     def _on_pause(self) -> None:
         self._session.apply(PauseBatch())

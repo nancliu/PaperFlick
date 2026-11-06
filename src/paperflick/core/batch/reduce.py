@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 
 from paperflick.core.batch.commands import (
     AddPaths,
     BatchCommand,
     ClearItems,
+    ClearSucceeded,
     PauseBatch,
     RemoveItems,
+    ReprintFailed,
     ResumeBatch,
     StartBatch,
     StopBatch,
@@ -33,8 +36,12 @@ def reduce(state: BatchState, command: BatchCommand) -> tuple[BatchState, list[B
         return _remove_items(state, command)
     if isinstance(command, ClearItems):
         return _clear_items(state)
+    if isinstance(command, ClearSucceeded):
+        return _clear_succeeded(state)
     if isinstance(command, StartBatch):
         return _start(state, command)
+    if isinstance(command, ReprintFailed):
+        return _reprint_failed(state, command)
     if isinstance(command, PauseBatch):
         return _pause(state)
     if isinstance(command, ResumeBatch):
@@ -67,21 +74,61 @@ def _remove_items(state: BatchState, command: RemoveItems) -> tuple[BatchState, 
     remove_ids = {item_id.value for item_id in command.item_ids}
     if not remove_ids:
         return state, []
-    kept = [item for item in state.items if item.id.value not in remove_ids]
-    if len(kept) == len(state.items):
-        return state, []
-    state.items = kept
-    if state.cursor > len(kept):
-        state.cursor = len(kept)
-    return state, [ItemsChanged(), _counts_event(kept)]
+    return _retain(state, lambda item: item.id.value not in remove_ids)
 
 
 def _clear_items(state: BatchState) -> tuple[BatchState, list[BatchEvent]]:
-    if not state.items:
+    return _retain(state, lambda _item: False)
+
+
+def _clear_succeeded(state: BatchState) -> tuple[BatchState, list[BatchEvent]]:
+    return _retain(state, lambda item: item.status is not ItemStatus.SUCCESS)
+
+
+def _retain(
+    state: BatchState,
+    keep: Callable[[PrintItem], bool],
+) -> tuple[BatchState, list[BatchEvent]]:
+    """Drop rows ``keep`` rejects and move the cursor with the kept prefix.
+
+    The next cursor is how many kept rows sat strictly before the old cursor.
+    Dropping a row before the cursor must not skip the next Waiting item.
+    """
+    kept: list[PrintItem] = []
+    new_cursor = 0
+    for index, item in enumerate(state.items):
+        if keep(item):
+            kept.append(item)
+            if index < state.cursor:
+                new_cursor += 1
+    if len(kept) == len(state.items):
         return state, []
-    state.items = []
-    state.cursor = 0
-    return state, [ItemsChanged(), _counts_event([])]
+    state.items = kept
+    state.cursor = new_cursor
+    return state, [ItemsChanged(), _counts_event(kept)]
+
+
+def _reprint_failed(
+    state: BatchState, command: ReprintFailed
+) -> tuple[BatchState, list[BatchEvent]]:
+    """IDLE with at least one FAILED item: reset those rows, then start.
+
+    A running Batch only walks forward, so a reset behind the cursor would be skipped.
+    Zero FAILED items do not start a Batch the user did not ask for.
+    """
+    if state.phase is not BatchPhase.IDLE:
+        return state, []
+    items = list(state.items)
+    reset = False
+    for index, item in enumerate(items):
+        if item.status is ItemStatus.FAILED:
+            items[index] = replace(item, status=ItemStatus.WAITING, failure_reason=None)
+            reset = True
+    if not reset:
+        return state, []
+    state.items = items
+    state, start_events = _start(state, command.start)
+    return state, [ItemsChanged(), *start_events]
 
 
 def _start(state: BatchState, command: StartBatch) -> tuple[BatchState, list[BatchEvent]]:

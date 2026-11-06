@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
+
 import customtkinter as ctk
 
 from paperflick.core.batch import (
@@ -38,6 +40,16 @@ def orientation_label(item: PrintItem) -> str:
     return _FACING_LABEL[facing]
 
 
+def _row_text(item: PrintItem) -> str:
+    """Row label with facing, status, and failure reason when present."""
+    name = item.path.name or str(item.path)
+    status = _STATUS_LABEL.get(item.status, item.status.value)
+    facing = orientation_label(item)
+    if item.status is ItemStatus.FAILED and item.failure_reason:
+        return f"{name}  {facing}  [{status}]  {item.failure_reason}"
+    return f"{name}  {facing}  [{status}]"
+
+
 class ItemListPanel(ctk.CTkFrame):
     """Scrollable rows for Print Items with multi-select for Remove."""
 
@@ -55,6 +67,12 @@ class ItemListPanel(ctk.CTkFrame):
     def selected_ids(self) -> list[ItemId]:
         """Return currently checked item ids."""
         return [item_id for item_id, var in self._row_vars.items() if var.get()]
+
+    def check_only(self, ids: Collection[ItemId]) -> None:
+        """Check exactly ``ids`` and clear every other row."""
+        wanted = set(ids)
+        for item_id, var in self._row_vars.items():
+            var.set(item_id in wanted)
 
     def bind_snapshot(self, snapshot: BatchSnapshot) -> None:
         """Rebuild rows from a BatchSnapshot."""
@@ -76,9 +94,6 @@ class ItemListPanel(ctk.CTkFrame):
             var = ctk.BooleanVar(value=checked)
             self._row_vars[item.id] = var
             ctk.CTkCheckBox(row, text="", variable=var, width=24).pack(side="left")
-            name = item.path.name or str(item.path)
-            status = _STATUS_LABEL.get(item.status, item.status.value)
-            label = orientation_label(item)
-            ctk.CTkLabel(row, text=f"{name}  {label}  [{status}]", anchor="w").pack(
+            ctk.CTkLabel(row, text=_row_text(item), anchor="w").pack(
                 side="left", fill="x", expand=True, padx=4
             )
