@@ -10,6 +10,12 @@ build/
 venv/
 .env
 .env.*
+.pytest_cache/
+.ruff_cache/
+_verify_*.py
+_repro_*.py
+.cursor/skills/verify-paperflick/artifacts/*/
+!/.cursor/skills/verify-paperflick/artifacts/README.md
 
 # IDE / OS
 .idea/

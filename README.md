@@ -22,9 +22,26 @@ python -m paperflick
 
 设置默认保存在 `%APPDATA%\PaperFlick\settings.json`。测试时可设置环境变量 `PAPERFLICK_APPDATA` 指向临时目录，以覆盖该路径。
 
+## 检查
+
+```powershell
+mamba activate paperflick
+pip install -e ".[dev]"
+ruff check src tests
+pytest -q
+pre-commit install
+```
+
+Windows 下用脚本或 `pytest` 跑检查，不要用多行 `python -c`。
+
+运行时验证见 `.cursor/skills/verify-paperflick/`。
+
 ## 文档
 
 - [产品规划](docs/产品规划.md) — 定位、命名依据、交互、技术选型与验收标准
+- [GLOSSARY.md](GLOSSARY.md) — 领域术语
+- [CODING_STANDARDS.md](CODING_STANDARDS.md) — 评审用判断性约定
+- [docs/adr/](docs/adr/) — 技术决策
 
 ## 状态
 
