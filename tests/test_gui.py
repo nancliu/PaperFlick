@@ -103,4 +103,10 @@ def test_main_window_boot_printer_and_interval_persist(
     assert reprinted.success_count == 1
     assert reprinted.items[0].failure_reason is None
 
+    selected = app._item_list.selected_ids()
+    app._status_label.configure(text="keep")
+    app._on_reprint_failed()
+    assert app._item_list.selected_ids() == selected
+    assert app._status_label.cget("text") == "keep"
+
     app.destroy()

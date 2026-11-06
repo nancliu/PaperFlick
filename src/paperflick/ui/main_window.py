@@ -9,6 +9,7 @@ import customtkinter as ctk
 from paperflick.core.batch import (
     AddPaths,
     BatchEvent,
+    BatchPhase,
     BatchPrefs,
     BatchSession,
     BatchSnapshot,
@@ -202,7 +203,10 @@ class MainWindow(ctk.CTk):
 
     def _on_reprint_failed(self) -> None:
         self._persist()
-        failed = self._session.snapshot().ids_with(ItemStatus.FAILED)
+        before = self._session.snapshot()
+        if before.phase is not BatchPhase.IDLE or before.failed_count == 0:
+            return
+        failed = before.ids_with(ItemStatus.FAILED)
         prefs = BatchPrefs.from_settings(self._settings)
         try:
             self._session.apply(ReprintFailed(StartBatch(prefs=prefs)))
