@@ -30,6 +30,8 @@ Run Python checks as script files: `mamba run -n paperflick python path\\to\\scr
 
 Before reporting an implementer done or opening a PR: working tree clean of junk, and `git push` so `origin/<branch>` includes every local commit (`git log origin/<branch>..HEAD` empty).
 
+If local commit signing hangs (common with 1Password `op-ssh-sign` timeouts), fall back to HTTPS `origin` and `git -c commit.gpgsign=false commit` for the feature branch; do not block the wave waiting on the signer. Keep arena scratch and design bakeoff trees out of the feature PR; leave only `docs/agents/design-issue-*-synthesis.md` (and grounding) when they earn review context.
+
 ### Missing plugins
 
 If `/deslop` (cursor-team-kit) is unavailable, skip searching for it. Tighten prose by hand and run `/no-comments` when needed.
