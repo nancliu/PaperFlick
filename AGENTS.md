@@ -32,7 +32,7 @@ Before reporting an implementer done or opening a PR: working tree clean of junk
 
 If local commit signing hangs (common with 1Password `op-ssh-sign` timeouts), fall back to HTTPS `origin` and `git -c commit.gpgsign=false commit` for the feature branch; do not block the wave waiting on the signer. The same flag applies to every `git rebase --continue` step (or commit the staged rebase result with `gpgsign=false` first). Keep arena scratch and design bakeoff trees out of the feature PR; leave only `docs/agents/design-issue-*-synthesis.md` (and grounding) when they earn review context.
 
-After a parallel sibling merges, rebase before land: merge conflict in `.cursor/skills/verify-paperflick/SKILL.md` / `features/README.md` means keep **both** feature names in the description and index, not one side.
+After a parallel sibling merges, rebase before land: merge conflict in `.cursor/skills/verify-paperflick/SKILL.md` / `features/README.md` means keep **both** feature names in the description and index, not one side. When two real-print PRs both extend `LiveSubmit` / `choose_submit_port`, keep every `DocKind` port and update cross-format batch tests; inject engine stubs so unit tests never launch Word/OnlyOffice/the Windows spooler.
 
 ### Missing plugins
 
