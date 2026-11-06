@@ -32,22 +32,12 @@ from paperflick.core.submit import (
 EventListener = Callable[[BatchEvent], None]
 
 
-def _row_after_submit(
-    item: PrintItem, result: SubmitResult
-) -> tuple[PrintItem, ItemStatus, str | None]:
+def _row_after_submit(item: PrintItem, result: SubmitResult) -> PrintItem:
     """Map one port result onto the row that was just claimed."""
     if isinstance(result, SubmitOk):
-        return (
-            replace(item, status=ItemStatus.SUCCESS, failure_reason=None),
-            ItemStatus.SUCCESS,
-            None,
-        )
+        return replace(item, status=ItemStatus.SUCCESS, failure_reason=None)
     if isinstance(result, SubmitFailed):
-        return (
-            replace(item, status=ItemStatus.FAILED, failure_reason=result.reason),
-            ItemStatus.FAILED,
-            result.reason,
-        )
+        return replace(item, status=ItemStatus.FAILED, failure_reason=result.reason)
     raise TypeError(f"Unexpected submit result: {type(result)!r}")
 
 
@@ -109,7 +99,8 @@ class BatchSession:
 
         if was_idle and self._state.phase is BatchPhase.RUNNING:
             prefs = self._state.prefs
-            assert prefs is not None
+            if prefs is None:
+                raise RuntimeError("Batch started without prefs")
             self._submitter = self._submit_factory(prefs)
             self._cancel_pending_tick()
             # First item advances immediately; later items wait for the interval.
@@ -169,11 +160,11 @@ class BatchSession:
 
         # wait_for_empty_queue is a no-op under Dry Run (preference still persisted).
         result = submitter.submit(SubmitRequest(item=printing, printer=prefs.selected_printer))
-        final, status, reason = _row_after_submit(printing, result)
+        final = _row_after_submit(printing, result)
         self._state.items[index] = final
         self._emit_all(
             [
-                ItemStatusChanged(item.id, status, reason),
+                ItemStatusChanged(item.id, final.status, final.failure_reason),
                 ItemsChanged(),
                 self._counts_event(),
             ]

@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from paperflick.core.batch.prefs import BatchPrefs
 from paperflick.core.submit.port import (
     PrintSubmitPort,
-    SubmitFailed,
     SubmitOk,
     SubmitRequest,
     SubmitResult,
@@ -23,16 +22,11 @@ class SubmitScript:
     """
 
     def __init__(self, steps: Sequence[SubmitResult] = ()) -> None:
-        checked: list[SubmitResult] = []
-        for step in steps:
-            if not isinstance(step, (SubmitOk, SubmitFailed)):
-                raise TypeError("SubmitScript steps must be SubmitOk or SubmitFailed")
-            checked.append(step)
-        self._steps = tuple(checked)
+        self._steps = tuple(steps)
         self._index = 0
 
-    def next(self, _request: SubmitRequest) -> SubmitResult:
-        """Return the current step and advance. The request does not choose the step."""
+    def next(self) -> SubmitResult:
+        """Return the current step and advance."""
         if self._index >= len(self._steps):
             return SubmitOk()
         result = self._steps[self._index]
@@ -51,7 +45,7 @@ class DryRunSubmit:
         failed = preflight(request)
         if failed is not None:
             return failed
-        return self._script.next(request)
+        return self._script.next()
 
 
 def choose_submit_port(prefs: BatchPrefs) -> PrintSubmitPort:
