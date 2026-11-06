@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paperflick"
+version = "0.1.0"
+description = "PaperFlick (纸闪) — personal Windows batch printing tool"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "customtkinter",
+]
+
+[project.scripts]
+paperflick = "paperflick.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
