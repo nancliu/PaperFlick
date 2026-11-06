@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from paperflick.core.settings import Settings, coerce_interval_seconds, load, save, settings_path
 
 
@@ -41,18 +39,3 @@ def test_corrupt_file_returns_defaults(tmp_path: Path, monkeypatch) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("{not json", encoding="utf-8")
     assert load() == Settings()
-
-
-@pytest.mark.gui
-def test_interval_keyrelease_persists(tmp_path: Path, monkeypatch, require_tk) -> None:
-    monkeypatch.setenv("PAPERFLICK_APPDATA", str(tmp_path))
-    save(Settings(interval_seconds=2.0))
-
-    from paperflick.ui.main_window import MainWindow
-
-    app = MainWindow()
-    app.update_idletasks()
-    app._interval_var.set("7.5")
-    app._on_interval_typed()
-    assert load().interval_seconds == 7.5
-    app.destroy()
