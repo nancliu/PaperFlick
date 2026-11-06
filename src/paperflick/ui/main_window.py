@@ -224,13 +224,21 @@ class MainWindow(ctk.CTk):
     def _apply_orientation(
         self, anchor: ItemId, orientation: Orientation, scope: ApplyScope
     ) -> bool:
-        """Apply a preview command. Refuse this-item and same-kind when the row is gone."""
+        """Apply a preview command. Refuse this-item and same-kind when the row is gone.
+
+        A no-op SetOrientation (same policy already on every targeted row) returns
+        False so the preview stays open and status text is left alone.
+        """
         if scope is not ApplyScope.ALL:
             present = any(row.id == anchor for row in self._session.snapshot().items)
             if not present:
                 self._status_label.configure(text="预览的打印项已不在列表中")
                 return False
+        before = {row.id: row.orientation for row in self._session.snapshot().items}
         self._session.apply(SetOrientation(anchor=anchor, orientation=orientation, scope=scope))
+        after = {row.id: row.orientation for row in self._session.snapshot().items}
+        if before == after:
+            return False
         self._status_label.configure(text="")
         return True
 

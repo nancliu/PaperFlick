@@ -119,6 +119,14 @@ def main() -> None:
         assert _item(app, "page.pdf").orientation is Orientation.AUTO
         assert any("tall.png  横向" in text for text in _labels(app))
 
+        preview = _open_preview(app, "tall.png")
+        app._status_label.configure(text="keep")
+        preview._choice.set(Orientation.LANDSCAPE.value)
+        preview._commit(ApplyScope.THIS)
+        assert preview.winfo_exists()
+        assert app._status_label.cget("text") == "keep"
+        preview.destroy()
+
         preview = _open_preview(app, "wide.png")
         preview._choice.set(Orientation.PRINTER_DEFAULT.value)
         preview._commit(ApplyScope.SAME_KIND)
