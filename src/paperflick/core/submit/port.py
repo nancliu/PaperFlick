@@ -34,6 +34,8 @@ class SubmitFailed:
 
 SubmitResult = SubmitOk | SubmitFailed
 
+REASON_UNSUPPORTED = "该格式暂不支持打印"
+
 
 class PrintSubmitPort(Protocol):
     """Boundary where Dry Run no-ops and real print would send a Print Job."""

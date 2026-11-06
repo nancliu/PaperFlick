@@ -11,11 +11,16 @@ from pathlib import Path
 
 from paperflick.core.batch.formats import DocKind
 from paperflick.core.batch.types import Facing, resolve_facing
-from paperflick.core.submit.port import SubmitFailed, SubmitOk, SubmitRequest, SubmitResult
+from paperflick.core.submit.port import (
+    REASON_UNSUPPORTED,
+    SubmitFailed,
+    SubmitOk,
+    SubmitRequest,
+    SubmitResult,
+)
 from paperflick.core.submit.preflight import preflight
 
 REASON_SUMATRA_MISSING = "未找到 SumatraPDF"
-REASON_UNSUPPORTED = "该格式暂不支持打印"
 REASON_SUMATRA_FAILED = "SumatraPDF 打印失败"
 REASON_SUMATRA_TIMEOUT = "SumatraPDF 打印超时"
 REASON_SUMATRA_LAUNCH = "无法启动 SumatraPDF"
