@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from paperflick.core.batch.prefs import BatchPrefs
-from paperflick.core.batch.types import BatchPhase, ItemStatus, PrintItem
+from paperflick.core.batch.types import BatchPhase, ItemId, ItemStatus, PrintItem
 
 
 @dataclass
@@ -29,6 +29,10 @@ class BatchSnapshot:
     waiting_count: int
     printing_count: int
     dry_run: bool
+
+    def ids_with(self, status: ItemStatus) -> list[ItemId]:
+        """Ids of items in ``status``, in list order."""
+        return [item.id for item in self.items if item.status is status]
 
 
 def count_statuses(items: list[PrintItem]) -> tuple[int, int, int, int]:

@@ -51,6 +51,38 @@ class StopBatch:
     """Stop a Batch and return to IDLE."""
 
 
+@dataclass(frozen=True, slots=True)
+class ReprintFailed:
+    """Reset every FAILED item to WAITING, then run ``start``. One reduce, all or nothing.
+
+    No-op unless the Batch is IDLE and at least one item is FAILED.
+    """
+
+    start: StartBatch
+
+
+@dataclass(frozen=True, slots=True)
+class ClearSucceeded:
+    """Remove SUCCESS rows. FAILED, WAITING, and PRINTING rows stay."""
+
+
 BatchCommand = (
-    AddPaths | RemoveItems | ClearItems | StartBatch | PauseBatch | ResumeBatch | StopBatch
+    AddPaths
+    | RemoveItems
+    | ClearItems
+    | ClearSucceeded
+    | StartBatch
+    | ReprintFailed
+    | PauseBatch
+    | ResumeBatch
+    | StopBatch
 )
+
+
+def starting_batch(command: BatchCommand) -> StartBatch | None:
+    """Return the StartBatch a command would run, if any."""
+    if isinstance(command, StartBatch):
+        return command
+    if isinstance(command, ReprintFailed):
+        return command.start
+    return None

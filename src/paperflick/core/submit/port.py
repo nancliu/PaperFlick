@@ -17,16 +17,27 @@ class SubmitRequest:
 
 
 @dataclass(frozen=True, slots=True)
-class SubmitResult:
-    """Outcome of one submit attempt."""
+class SubmitOk:
+    """The Print Job was handed off, or Dry Run would have handed it off."""
 
-    ok: bool
-    failure_reason: str | None = None
+
+@dataclass(frozen=True, slots=True)
+class SubmitFailed:
+    """The Print Item could not be submitted. ``reason`` is shown on the list row."""
+
+    reason: str
+
+    def __post_init__(self) -> None:
+        if not self.reason.strip():
+            raise ValueError("SubmitFailed requires a reason")
+
+
+SubmitResult = SubmitOk | SubmitFailed
 
 
 class PrintSubmitPort(Protocol):
     """Boundary where Dry Run no-ops and real print would send a Print Job."""
 
     def submit(self, request: SubmitRequest) -> SubmitResult:
-        """Submit one Print Item. Dry Run always returns ok without OS print."""
+        """Submit one Print Item. Return SubmitOk or SubmitFailed."""
         ...

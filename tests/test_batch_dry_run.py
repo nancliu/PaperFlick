@@ -23,7 +23,7 @@ from paperflick.core.batch import (
     Unread,
     resolve_facing,
 )
-from paperflick.core.submit import DryRunSubmit, StartNeedsDryRunError, SubmitRequest
+from paperflick.core.submit import DryRunSubmit, StartNeedsDryRunError, SubmitOk, SubmitRequest
 from paperflick.core.submit.dry_run import choose_submit_port
 
 
@@ -145,22 +145,23 @@ def test_second_start_while_running_is_noop(tmp_path: Path) -> None:
     assert session.snapshot().success_count == 2
 
 
-def test_dry_run_submit_never_calls_win32(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dry_run_submit_never_calls_win32(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fake_win32 = MagicMock()
     monkeypatch.setitem(__import__("sys").modules, "win32print", fake_win32)
     monkeypatch.setitem(__import__("sys").modules, "win32api", fake_win32)
 
+    path = _touch(tmp_path / "x.pdf")
     port = DryRunSubmit()
     from paperflick.core.batch.formats import DocKind, Probe
-    from paperflick.core.batch.types import PrintItem
+    from paperflick.core.batch.types import Measured, PrintItem
 
-    item = PrintItem.added(Path("x.pdf"), Probe(DocKind.PDF, Unread("not read")))
+    item = PrintItem.added(path, Probe(DocKind.PDF, Measured(100, 200)))
     result = port.submit(SubmitRequest(item=item, printer=None))
-    assert result.ok is True
+    assert isinstance(result, SubmitOk)
     fake_win32.assert_not_called()
-    assert (
-        choose_submit_port(_prefs(dry_run=True)).submit(SubmitRequest(item=item, printer=None)).ok
-    )
+    again = choose_submit_port(_prefs(dry_run=True)).submit(SubmitRequest(item=item, printer=None))
+    assert isinstance(again, SubmitOk)
+    fake_win32.assert_not_called()
 
 
 def test_choose_submit_port_rejects_non_dry_run() -> None:

@@ -7,7 +7,7 @@ from dataclasses import replace
 from typing import Any
 
 from paperflick.core.batch.clock import CancelAfter, ManualClock, ScheduleAfter
-from paperflick.core.batch.commands import BatchCommand, StartBatch
+from paperflick.core.batch.commands import BatchCommand, starting_batch
 from paperflick.core.batch.events import (
     BatchEvent,
     CountsChanged,
@@ -18,12 +18,27 @@ from paperflick.core.batch.events import (
 from paperflick.core.batch.prefs import BatchPrefs
 from paperflick.core.batch.reduce import reduce
 from paperflick.core.batch.state import BatchSnapshot, BatchState, count_statuses, snapshot_from
-from paperflick.core.batch.types import BatchPhase, ItemStatus
-from paperflick.core.submit import SubmitRequest, choose_submit_port
-from paperflick.core.submit.dry_run import StartNeedsDryRunError
-from paperflick.core.submit.port import PrintSubmitPort
+from paperflick.core.batch.types import BatchPhase, ItemStatus, PrintItem
+from paperflick.core.submit import (
+    PrintSubmitPort,
+    StartNeedsDryRunError,
+    SubmitFailed,
+    SubmitOk,
+    SubmitRequest,
+    SubmitResult,
+    choose_submit_port,
+)
 
 EventListener = Callable[[BatchEvent], None]
+
+
+def _row_after_submit(item: PrintItem, result: SubmitResult) -> PrintItem:
+    """Map one port result onto the row that was just claimed."""
+    if isinstance(result, SubmitOk):
+        return replace(item, status=ItemStatus.SUCCESS, failure_reason=None)
+    if isinstance(result, SubmitFailed):
+        return replace(item, status=ItemStatus.FAILED, failure_reason=result.reason)
+    raise TypeError(f"Unexpected submit result: {type(result)!r}")
 
 
 class BatchSession:
@@ -71,7 +86,8 @@ class BatchSession:
 
     def apply(self, command: BatchCommand) -> None:
         """Apply a user command. May schedule clock work for Start/Resume."""
-        if isinstance(command, StartBatch) and not command.prefs.dry_run:
+        start = starting_batch(command)
+        if start is not None and not start.prefs.dry_run:
             raise StartNeedsDryRunError(
                 "Enable Dry Run before Start. Real print is not available yet."
             )
@@ -81,8 +97,11 @@ class BatchSession:
         self._state, events = reduce(self._state, command)
         self._emit_all(events)
 
-        if isinstance(command, StartBatch) and was_idle and self._state.phase is BatchPhase.RUNNING:
-            self._submitter = self._submit_factory(command.prefs)
+        if was_idle and self._state.phase is BatchPhase.RUNNING:
+            prefs = self._state.prefs
+            if prefs is None:
+                raise RuntimeError("Batch started without prefs")
+            self._submitter = self._submit_factory(prefs)
             self._cancel_pending_tick()
             # First item advances immediately; later items wait for the interval.
             self._on_interval_tick()
@@ -141,22 +160,11 @@ class BatchSession:
 
         # wait_for_empty_queue is a no-op under Dry Run (preference still persisted).
         result = submitter.submit(SubmitRequest(item=printing, printer=prefs.selected_printer))
-        if result.ok:
-            final = replace(printing, status=ItemStatus.SUCCESS, failure_reason=None)
-            status = ItemStatus.SUCCESS
-            reason = None
-        else:
-            final = replace(
-                printing,
-                status=ItemStatus.FAILED,
-                failure_reason=result.failure_reason,
-            )
-            status = ItemStatus.FAILED
-            reason = result.failure_reason
+        final = _row_after_submit(printing, result)
         self._state.items[index] = final
         self._emit_all(
             [
-                ItemStatusChanged(item.id, status, reason),
+                ItemStatusChanged(item.id, final.status, final.failure_reason),
                 ItemsChanged(),
                 self._counts_event(),
             ]
