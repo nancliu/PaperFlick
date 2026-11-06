@@ -84,6 +84,7 @@ def test_main_window_boot_printer_and_interval_persist(
     snap = app._session.snapshot()
     assert snap.failed_count == 1
     assert snap.success_count == 1
+    assert app._status_label.cget("text") == "本批完成：成功 1、失败 1"
     assert snap.items[0].failure_reason == "卡纸"
     assert any("卡纸" in text for text in _row_labels(app))
 
@@ -101,6 +102,7 @@ def test_main_window_boot_printer_and_interval_persist(
     reprinted = app._session.snapshot()
     assert reprinted.failed_count == 0
     assert reprinted.success_count == 1
+    assert app._status_label.cget("text") == "本批完成：成功 1、失败 0"
     assert reprinted.items[0].failure_reason is None
 
     selected = app._item_list.selected_ids()
