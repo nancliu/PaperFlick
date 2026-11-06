@@ -18,7 +18,7 @@ pip install -e .
 python -m paperflick
 ```
 
-若环境已存在，用 `mamba env update -f environment.yml --prune` 同步依赖后，再 `pip install -e .`。
+若环境已存在，用 `mamba env update -f environment.yml --prune` 同步依赖后，再 `pip install -e .`。`pywin32` 由 conda 环境提供，用于枚举本机打印机。
 
 设置默认保存在 `%APPDATA%\PaperFlick\settings.json`。测试时可设置环境变量 `PAPERFLICK_APPDATA` 指向临时目录，以覆盖该路径。
 
