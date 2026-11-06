@@ -1,30 +1,56 @@
 from __future__ import annotations
 
+from pathlib import Path
+from tkinter import filedialog, messagebox
+
 import customtkinter as ctk
 
+from paperflick.core.batch import (
+    AddPaths,
+    BatchEvent,
+    BatchPrefs,
+    BatchSession,
+    BatchSnapshot,
+    PauseBatch,
+    RemoveItems,
+    ResumeBatch,
+    StartBatch,
+    StopBatch,
+)
 from paperflick.core.settings import Settings, coerce_interval_seconds, load, save
+from paperflick.core.submit import StartNeedsDryRunError
+from paperflick.ui.item_list import ItemListPanel
 
 
 class MainWindow(ctk.CTk):
     def __init__(self, settings: Settings | None = None) -> None:
         super().__init__()
         self.title("PaperFlick")
-        self.geometry("420x240")
-        self.minsize(360, 200)
+        self.geometry("640x520")
+        self.minsize(480, 420)
 
         self._settings = settings if settings is not None else load()
+        self._session = BatchSession(
+            schedule_after=self._tk_schedule,
+            cancel_after=self._tk_cancel,
+        )
+        self._session.subscribe(self._on_batch_event)
+        self._after_handles: set[str] = set()
 
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("blue")
 
         root = ctk.CTkFrame(self, fg_color="transparent")
-        root.pack(fill="both", expand=True, padx=20, pady=20)
+        root.pack(fill="both", expand=True, padx=20, pady=16)
 
         ctk.CTkLabel(root, text="纸闪 PaperFlick", font=ctk.CTkFont(size=18, weight="bold")).pack(
-            anchor="w", pady=(0, 16)
+            anchor="w", pady=(0, 12)
         )
 
-        interval_row = ctk.CTkFrame(root, fg_color="transparent")
+        prefs = ctk.CTkFrame(root, fg_color="transparent")
+        prefs.pack(fill="x", pady=(0, 8))
+
+        interval_row = ctk.CTkFrame(prefs, fg_color="transparent")
         interval_row.pack(fill="x", pady=4)
         ctk.CTkLabel(interval_row, text="发送间隔（秒）").pack(side="left")
         self._interval_var = ctk.StringVar(value=str(self._settings.interval_seconds))
@@ -36,21 +62,119 @@ class MainWindow(ctk.CTk):
 
         self._wait_var = ctk.BooleanVar(value=self._settings.wait_for_empty_queue)
         ctk.CTkCheckBox(
-            root,
+            prefs,
             text="等待打印队列清空后再发下一份",
             variable=self._wait_var,
             command=self._persist,
-        ).pack(anchor="w", pady=8)
+        ).pack(anchor="w", pady=4)
 
         self._dry_var = ctk.BooleanVar(value=self._settings.dry_run)
         ctk.CTkCheckBox(
-            root,
+            prefs,
             text="Dry Run（只走流程，不真正打印）",
             variable=self._dry_var,
             command=self._persist,
         ).pack(anchor="w", pady=4)
 
+        list_toolbar = ctk.CTkFrame(root, fg_color="transparent")
+        list_toolbar.pack(fill="x", pady=(8, 4))
+        ctk.CTkButton(list_toolbar, text="添加文件", width=90, command=self._on_add_files).pack(
+            side="left", padx=(0, 6)
+        )
+        ctk.CTkButton(list_toolbar, text="添加文件夹", width=90, command=self._on_add_folder).pack(
+            side="left", padx=(0, 6)
+        )
+        ctk.CTkButton(
+            list_toolbar, text="移除所选", width=90, command=self._on_remove_selected
+        ).pack(side="left")
+
+        self._item_list = ItemListPanel(root)
+        self._item_list.pack(fill="both", expand=True, pady=4)
+
+        batch_bar = ctk.CTkFrame(root, fg_color="transparent")
+        batch_bar.pack(fill="x", pady=(8, 4))
+        ctk.CTkButton(batch_bar, text="开始", width=80, command=self._on_start).pack(
+            side="left", padx=(0, 6)
+        )
+        ctk.CTkButton(batch_bar, text="暂停", width=80, command=self._on_pause).pack(
+            side="left", padx=(0, 6)
+        )
+        ctk.CTkButton(batch_bar, text="继续", width=80, command=self._on_resume).pack(
+            side="left", padx=(0, 6)
+        )
+        ctk.CTkButton(batch_bar, text="停止", width=80, command=self._on_stop).pack(side="left")
+
+        self._counts_label = ctk.CTkLabel(root, text="", anchor="w")
+        self._counts_label.pack(fill="x", pady=(4, 0))
+        self._status_label = ctk.CTkLabel(root, text="", anchor="w", text_color="gray")
+        self._status_label.pack(fill="x")
+
+        self._bind_list(self._session.snapshot())
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _tk_schedule(self, delay_seconds: float, callback: object) -> str:
+        ms = max(0, int(delay_seconds * 1000))
+        handle = self.after(ms, callback)  # type: ignore[arg-type]
+        self._after_handles.add(handle)
+        return handle
+
+    def _tk_cancel(self, handle: str) -> None:
+        try:
+            self.after_cancel(handle)
+        except Exception:
+            pass
+        self._after_handles.discard(handle)
+
+    def _on_add_files(self) -> None:
+        paths = filedialog.askopenfilenames(parent=self, title="选择文件")
+        if not paths:
+            return
+        self._session.apply(AddPaths([Path(p) for p in paths]))
+
+    def _on_add_folder(self) -> None:
+        folder = filedialog.askdirectory(parent=self, title="选择文件夹")
+        if not folder:
+            return
+        self._session.apply(AddPaths([Path(folder)]))
+
+    def _on_remove_selected(self) -> None:
+        ids = self._item_list.selected_ids()
+        if not ids:
+            return
+        self._session.apply(RemoveItems(ids))
+
+    def _on_start(self) -> None:
+        self._persist()
+        prefs = BatchPrefs.from_settings(self._settings)
+        try:
+            self._session.apply(StartBatch(prefs=prefs))
+        except StartNeedsDryRunError as exc:
+            self._status_label.configure(text=str(exc))
+            messagebox.showinfo("无法开始", str(exc), parent=self)
+            return
+        self._status_label.configure(text="")
+
+    def _on_pause(self) -> None:
+        self._session.apply(PauseBatch())
+
+    def _on_resume(self) -> None:
+        self._session.apply(ResumeBatch())
+
+    def _on_stop(self) -> None:
+        self._session.apply(StopBatch())
+
+    def _on_batch_event(self, _event: BatchEvent) -> None:
+        self._bind_list(self._session.snapshot())
+
+    def _bind_list(self, snapshot: BatchSnapshot) -> None:
+        self._item_list.bind_snapshot(snapshot)
+        self._counts_label.configure(
+            text=(
+                f"成功 {snapshot.success_count}  ·  失败 {snapshot.failed_count}  ·  "
+                f"等待 {snapshot.waiting_count}  ·  打印中 {snapshot.printing_count}  ·  "
+                f"状态 {snapshot.phase.value}"
+            )
+        )
 
     def _on_interval_typed(self, _event: object | None = None) -> None:
         raw = self._interval_var.get().strip()
@@ -87,6 +211,9 @@ class MainWindow(ctk.CTk):
         save(self._settings)
 
     def _on_close(self) -> None:
+        self._session.apply(StopBatch())
+        for handle in list(self._after_handles):
+            self._tk_cancel(handle)
         self._persist()
         self.destroy()
 
