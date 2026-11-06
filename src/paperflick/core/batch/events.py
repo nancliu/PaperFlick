@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from paperflick.core.batch.ledger import RunLedger
 from paperflick.core.batch.types import BatchPhase, ItemId, ItemStatus
 
 
@@ -38,4 +39,15 @@ class CountsChanged:
     printing: int
 
 
-BatchEvent = ItemsChanged | ItemStatusChanged | PhaseChanged | CountsChanged
+@dataclass(frozen=True, slots=True)
+class RunReported:
+    """Natural finish. Stop does not emit this."""
+
+    ledger: RunLedger
+
+    @property
+    def text(self) -> str:
+        return f"本批完成：成功 {self.ledger.success}、失败 {self.ledger.failed}"
+
+
+BatchEvent = ItemsChanged | ItemStatusChanged | PhaseChanged | CountsChanged | RunReported

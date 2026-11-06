@@ -14,30 +14,18 @@ from paperflick.core.batch.events import (
     ItemsChanged,
     ItemStatusChanged,
     PhaseChanged,
+    RunReported,
 )
+from paperflick.core.batch.gate import SpoolerProbe, SubmitNext, WaitInterval, gate_decision
+from paperflick.core.batch.ledger import RunLedger, apply_handoff
 from paperflick.core.batch.prefs import BatchPrefs
 from paperflick.core.batch.reduce import reduce
 from paperflick.core.batch.state import BatchSnapshot, BatchState, count_statuses, snapshot_from
-from paperflick.core.batch.types import BatchPhase, ItemStatus, PrintItem
-from paperflick.core.submit import (
-    PrintSubmitPort,
-    SubmitFailed,
-    SubmitOk,
-    SubmitRequest,
-    SubmitResult,
-    choose_submit_port,
-)
+from paperflick.core.batch.types import BatchPhase, ItemStatus
+from paperflick.core.printers import count_spooler_jobs
+from paperflick.core.submit import PrintSubmitPort, SubmitRequest, choose_submit_port
 
 EventListener = Callable[[BatchEvent], None]
-
-
-def _row_after_submit(item: PrintItem, result: SubmitResult) -> PrintItem:
-    """Map one port result onto the row that was just claimed."""
-    if isinstance(result, SubmitOk):
-        return replace(item, status=ItemStatus.SUCCESS, failure_reason=None)
-    if isinstance(result, SubmitFailed):
-        return replace(item, status=ItemStatus.FAILED, failure_reason=result.reason)
-    raise TypeError(f"Unexpected submit result: {type(result)!r}")
 
 
 class BatchSession:
@@ -49,11 +37,14 @@ class BatchSession:
         submit_factory: Callable[[BatchPrefs], PrintSubmitPort] | None = None,
         schedule_after: ScheduleAfter | None = None,
         cancel_after: CancelAfter | None = None,
+        spooler: SpoolerProbe | None = None,
     ) -> None:
         self._state = BatchState()
         self._listeners: list[EventListener] = []
         self._submit_factory = submit_factory or choose_submit_port
         self._submitter: PrintSubmitPort | None = None
+        self._ledger = RunLedger()
+        self._spooler: SpoolerProbe = spooler if spooler is not None else count_spooler_jobs
         self._tick_handle: Any = None
         self._manual: ManualClock | None = None
         if schedule_after is None or cancel_after is None:
@@ -94,10 +85,10 @@ class BatchSession:
             prefs = self._state.prefs
             if prefs is None:
                 raise RuntimeError("Batch started without prefs")
+            self._ledger = RunLedger()
             self._submitter = self._submit_factory(prefs)
             self._cancel_pending_tick()
-            # First item advances immediately; later items wait for the interval.
-            self._on_interval_tick()
+            self._submit_next()
         elif self._state.phase is BatchPhase.PAUSED:
             self._cancel_pending_tick()
         elif self._state.phase is BatchPhase.IDLE:
@@ -122,10 +113,25 @@ class BatchSession:
             return
         self._cancel_pending_tick()
         delay = max(0.0, prefs.interval_seconds)
-        self._tick_handle = self._schedule_after(delay, self._on_interval_tick)
+        self._tick_handle = self._schedule_after(delay, self._on_gated_tick)
 
-    def _on_interval_tick(self) -> None:
-        """Claim next Waiting item, submit, record status, schedule next tick."""
+    def _on_gated_tick(self) -> None:
+        self._tick_handle = None
+        if self._state.phase is not BatchPhase.RUNNING:
+            return
+        prefs = self._state.prefs
+        if prefs is None:
+            return
+        decision = gate_decision(prefs, self._spooler)
+        if isinstance(decision, WaitInterval):
+            self._schedule_next_tick()
+            return
+        if isinstance(decision, SubmitNext):
+            self._submit_next()
+            return
+        raise TypeError(f"Unexpected gate decision: {type(decision)!r}")
+
+    def _submit_next(self) -> None:
         self._tick_handle = None
         if self._state.phase is not BatchPhase.RUNNING:
             return
@@ -151,9 +157,8 @@ class BatchSession:
             ]
         )
 
-        # wait_for_empty_queue is a no-op under Dry Run (preference still persisted).
         result = submitter.submit(SubmitRequest(item=printing, printer=prefs.selected_printer))
-        final = _row_after_submit(printing, result)
+        final, self._ledger = apply_handoff(printing, self._ledger, result)
         self._state.items[index] = final
         self._emit_all(
             [
@@ -183,7 +188,7 @@ class BatchSession:
             return
         self._state.phase = BatchPhase.IDLE
         self._submitter = None
-        self._emit_all([PhaseChanged(BatchPhase.IDLE)])
+        self._emit_all([PhaseChanged(BatchPhase.IDLE), RunReported(self._ledger)])
 
     def _counts_event(self) -> CountsChanged:
         success, failed, waiting, printing = count_statuses(self._state.items)
