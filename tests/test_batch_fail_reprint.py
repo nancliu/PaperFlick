@@ -22,7 +22,6 @@ from paperflick.core.batch.formats import DocKind, Probe
 from paperflick.core.batch.types import Measured, PrintItem
 from paperflick.core.submit import (
     DryRunSubmit,
-    StartNeedsDryRunError,
     SubmitFailed,
     SubmitOk,
     SubmitRequest,
@@ -152,14 +151,15 @@ def test_reprint_failed_resets_and_starts(tmp_path: Path) -> None:
     assert reprinted.failure_reason is None
 
 
-def test_reprint_without_dry_run_does_not_reset(tmp_path: Path) -> None:
+def test_reprint_with_dry_run_off_submits(tmp_path: Path) -> None:
     session = _finish_pair(tmp_path, SubmitScript((SubmitFailed("卡纸"),)))
-    with pytest.raises(StartNeedsDryRunError, match="Dry Run"):
-        session.apply(ReprintFailed(StartBatch(_prefs(dry_run=False))))
+    session.apply(ReprintFailed(StartBatch(_prefs(dry_run=False))))
     snap = session.snapshot()
     assert snap.phase is BatchPhase.IDLE
-    assert snap.items[0].status is ItemStatus.FAILED
-    assert snap.items[0].failure_reason == "卡纸"
+    assert snap.dry_run is False
+    assert snap.failed_count == 0
+    assert snap.items[0].status is ItemStatus.SUCCESS
+    assert snap.items[0].failure_reason is None
 
 
 def test_reprint_while_paused_is_noop(tmp_path: Path) -> None:

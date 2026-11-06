@@ -4,13 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from paperflick.core.batch.prefs import BatchPrefs
-from paperflick.core.submit.port import (
-    PrintSubmitPort,
-    SubmitOk,
-    SubmitRequest,
-    SubmitResult,
-)
+from paperflick.core.submit.port import SubmitOk, SubmitRequest, SubmitResult
 from paperflick.core.submit.preflight import preflight
 
 
@@ -46,14 +40,3 @@ class DryRunSubmit:
         if failed is not None:
             return failed
         return self._script.next()
-
-
-def choose_submit_port(prefs: BatchPrefs) -> PrintSubmitPort:
-    """Select the submit implementation from prefs. Wave 1 returns DryRunSubmit only."""
-    if prefs.dry_run:
-        return DryRunSubmit()
-    raise StartNeedsDryRunError("Wave 1 only supports Dry Run. Enable Dry Run before Start.")
-
-
-class StartNeedsDryRunError(ValueError):
-    """Raised when Start is requested without Dry Run (no real sink yet)."""
