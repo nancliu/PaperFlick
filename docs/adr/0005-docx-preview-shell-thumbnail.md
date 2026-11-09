@@ -1,0 +1,3 @@
+# DOCX preview uses Windows Shell thumbnails
+
+Preview already rasterizes images (Pillow) and PDF (pymupdf) in-process. For DOCX we rejected routing preview through the Live print engines (Word COM / OnlyOffice→PDF): that couples a fast UI path to slow, side-effectful submit machinery and breaks consistency with the image/PDF preview shape. True WYSIWYG DOCX rasterizers in pure Python are weak; we accept Windows Shell thumbnail extraction instead so `.doc`/`.docx` can match Explorer when a preview handler exists, stay off the print stack, and fall back to the existing text placeholder when the shell returns nothing useful (including a generic file icon). Generation stays synchronous when the preview opens, same as PDF.

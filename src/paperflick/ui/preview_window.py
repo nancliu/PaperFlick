@@ -28,15 +28,50 @@ _CHOICES = (
 )
 
 
-def _page_image(path: Path) -> Image.Image | None:
-    """Return a small RGB thumbnail, or None when the file cannot be drawn."""
+_THUMB_SIZE = (360, 240)
+
+
+def _image_page(path: Path) -> Image.Image | None:
+    """Return a small RGB thumbnail for an image file, or None on failure."""
     try:
         with Image.open(path) as source:
             frame = source.convert("RGB")
-            frame.thumbnail((360, 240))
+            frame.thumbnail(_THUMB_SIZE)
             return frame.copy()
     except OSError:
         return None
+
+
+def _pdf_page(path: Path) -> Image.Image | None:
+    """Return a small RGB thumbnail of the first PDF page, or None on failure."""
+    try:
+        import pymupdf
+    except ImportError:
+        return None
+    try:
+        doc = pymupdf.open(path)
+    except Exception:
+        return None
+    try:
+        if doc.page_count < 1:
+            return None
+        pix = doc.load_page(0).get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5), alpha=False)
+        frame = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        frame.thumbnail(_THUMB_SIZE)
+        return frame
+    except Exception:
+        return None
+    finally:
+        doc.close()
+
+
+def _page_image(item: PrintItem) -> Image.Image | None:
+    """Return a page thumbnail for kinds that can be drawn, else None."""
+    if item.kind is DocKind.IMAGE:
+        return _image_page(item.path)
+    if item.kind is DocKind.PDF:
+        return _pdf_page(item.path)
+    return None
 
 
 class PreviewWindow(ctk.CTkToplevel):
@@ -78,8 +113,8 @@ class PreviewWindow(ctk.CTkToplevel):
         ).pack(fill="x", padx=16, pady=(0, 8))
 
     def _build_page(self, item: PrintItem) -> None:
-        """Draw an image thumbnail. Other kinds keep a text fallback."""
-        drawn = _page_image(item.path) if item.kind is DocKind.IMAGE else None
+        """Draw an image or PDF thumbnail. Other kinds keep a text fallback."""
+        drawn = _page_image(item)
         if drawn is None:
             ctk.CTkLabel(
                 self,

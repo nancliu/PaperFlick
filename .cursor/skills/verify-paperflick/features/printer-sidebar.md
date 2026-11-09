@@ -1,11 +1,12 @@
 # Printer sidebar and selection persistence
 
-The main window sidebar lists installed printers. Choosing one writes `selected_printer` into settings and restores that choice after restart when the name is still installed.
+The main window sidebar lists installed printers. Choosing one writes `selected_printer` into settings and restores that choice after restart when the name is still installed. When nothing is stored, the sidebar selects the Windows default printer if it is installed and persists that name on boot.
 
 ## Sub-features
 
 - `printer-list` shows branded names from `list_installed_printers()` (empty list is safe).
 - `printer-select-persist` saves the chosen name via the same `_persist` path as other settings.
+- `printer-system-default` selects `GetDefaultPrinter` when `selected_printer` is unset and that name is installed.
 - `printer-stale` keeps a missing saved name in settings and does not force a sidebar match.
 
 ## How to get to it (user POV)

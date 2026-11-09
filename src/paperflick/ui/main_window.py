@@ -220,6 +220,11 @@ class MainWindow(ctk.CTk):
 
         self._bind_list(self._session.snapshot())
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        if (
+            self._settings.selected_printer is None
+            and self._printer_sidebar.selected_name() is not None
+        ):
+            self._persist()
 
     def _tk_schedule(self, delay_seconds: float, callback: object) -> str:
         ms = max(0, int(delay_seconds * 1000))
