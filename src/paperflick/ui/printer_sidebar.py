@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 import customtkinter as ctk
 
-from paperflick.core.printers import resolve_selected_printer
+from paperflick.core.printers import resolve_sidebar_printer, system_default_printer
 
 
 class PrinterSidebar(ctk.CTkFrame):
@@ -18,6 +18,8 @@ class PrinterSidebar(ctk.CTkFrame):
         printers: list[str],
         selected: str | None,
         on_select: Callable[[str], None],
+        *,
+        default_printer: Callable[[], str | None] | None = None,
         **kwargs: object,
     ) -> None:
         super().__init__(master, **kwargs)  # type: ignore[arg-type]
@@ -28,7 +30,12 @@ class PrinterSidebar(ctk.CTkFrame):
             anchor="w", padx=8, pady=(8, 4)
         )
 
-        matched = resolve_selected_printer(selected, self._printers)
+        probe = default_printer if default_printer is not None else system_default_printer
+        matched = resolve_sidebar_printer(
+            selected,
+            self._printers,
+            system_default=probe(),
+        )
         self._printer_var = ctk.StringVar(value=matched or "")
 
         scroll = ctk.CTkScrollableFrame(self, fg_color="transparent")

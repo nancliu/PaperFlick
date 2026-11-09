@@ -25,6 +25,35 @@ def resolve_selected_printer(
     return branded if branded in installed else None
 
 
+def system_default_printer() -> str | None:
+    """Return the Windows default printer name, or None when unavailable."""
+    try:
+        return brand_printer_name(_win32_default_printer())
+    except Exception:
+        return None
+
+
+def resolve_sidebar_printer(
+    selected: str | None,
+    installed: Sequence[str],
+    *,
+    system_default: str | None = None,
+) -> str | None:
+    """Pick the sidebar radio value.
+
+    Prefer a persisted name that is still installed. When nothing is stored,
+    fall back to the system default if it appears in ``installed``. A stale
+    stored name (not in ``installed``) leaves the sidebar unmatched so
+    persistence can keep the old value.
+    """
+    matched = resolve_selected_printer(selected, installed)
+    if matched is not None:
+        return matched
+    if brand_printer_name(selected) is not None:
+        return None
+    return resolve_selected_printer(system_default, installed)
+
+
 def selected_printer_for_persist(
     ui_choice: str | None,
     stored: str | None,

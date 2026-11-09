@@ -11,6 +11,7 @@ from paperflick.core.printers import (
     brand_printer_name,
     list_installed_printers,
     resolve_selected_printer,
+    resolve_sidebar_printer,
     selected_printer_for_persist,
 )
 
@@ -36,6 +37,16 @@ def test_selected_printer_for_persist_keeps_stale() -> None:
     assert selected_printer_for_persist(None, "Gone Printer") == "Gone Printer"
     assert selected_printer_for_persist(None, None) is None
     assert selected_printer_for_persist(None, "  ") is None
+
+
+def test_resolve_sidebar_printer_falls_back_to_system_default() -> None:
+    installed = ["A", "B", "C"]
+    assert resolve_sidebar_printer(None, installed, system_default="B") == "B"
+    assert resolve_sidebar_printer("  ", installed, system_default="B") == "B"
+    assert resolve_sidebar_printer("A", installed, system_default="B") == "A"
+    assert resolve_sidebar_printer("Gone", installed, system_default="B") is None
+    assert resolve_sidebar_printer(None, installed, system_default="Missing") is None
+    assert resolve_sidebar_printer(None, installed, system_default=None) is None
 
 
 def test_list_installed_printers_parses_enum_rows(monkeypatch: pytest.MonkeyPatch) -> None:
