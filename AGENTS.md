@@ -26,6 +26,10 @@ Feature worktrees must include these files (branch from a tip that already has t
 
 Run Python checks as script files: `mamba run -n paperflick python path\\to\\script.py` or `pytest`. Do not pass multi-line programs via `python -c` under PowerShell (the shell splits lines into CMD commands).
 
+### CI dependencies
+
+GitHub Actions installs with `pip install -e ".[dev]"` from `pyproject.toml`, not `environment.yml`. Any import a non-`gui` test needs at collection time (e.g. `pymupdf`) must be declared in `[project].dependencies` (or the matching optional extra CI installs). Adding a package only to `environment.yml` leaves CI red.
+
 ### Commit / PR handoff
 
 Before reporting an implementer done or opening a PR: working tree clean of junk, and `git push` so `origin/<branch>` includes every local commit (`git log origin/<branch>..HEAD` empty).
