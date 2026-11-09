@@ -17,8 +17,8 @@ _Avoid_: Print Item, Task
 _Avoid_: Queue（易与 Spooler 队列混淆）, Run
 
 **Dry Run（干跑）**：
-不向真实打印机送作业、但走同一套调度与状态机的运行方式，用于自测与 agent 验证。
-_Avoid_: Mock print（易被理解成只 mock 函数）, Test mode（过宽）
+不向真实打印机送作业、但走同一套调度与状态机的运行方式，用于自测与 agent 验证。UI 文案可用「演练（不送打印机）」；设置与代码标识仍用 Dry Run / `dry_run`。
+_Avoid_: Mock print（易被理解成只 mock 函数）, Test mode（过宽）；勿把 UI「演练」写成第二套领域名
 
 **Orientation（方向）**：
 某打印项出纸时的页面朝向策略。
