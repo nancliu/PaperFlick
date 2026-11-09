@@ -22,7 +22,7 @@ Preconditions:
 
 - **Doctor.** Import `Settings` and `load`. Defaults equal `Settings()`.
 - **Launch.** Start `MainWindow` or `python -m paperflick`. Window title is `PaperFlick`.
-- **Defaults visible.** Interval field shows `2.0` (or `2`); wait and Dry Run unchecked.
+- **Defaults visible.** 「设置 ▾」 is collapsed. Open it: interval field shows `2.0` (or `2`); wait and 演练 unchecked. Close it again; that open/closed choice is not in `settings.json`.
 - **Proof.** Copy `settings.json` after first close/persist (may be created on first save) into `artifacts/<run-id>/boot-settings/`. Optional window screenshot when display is available.
 
 ## Gotchas

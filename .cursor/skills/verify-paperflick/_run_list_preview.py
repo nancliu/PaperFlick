@@ -244,6 +244,7 @@ def main() -> None:
         assert "移除所选" not in button_texts
         assert "预览" not in button_texts
         assert "只勾选失败项" not in button_texts
+        assert not _toolbar_button(app, "移除全部失败").winfo_ismapped()
         assert not any(isinstance(node, ctk.CTkCheckBox) for node in _walk(app._item_list))
 
         app._session.apply(AddPaths([alpha, beta]))
@@ -338,7 +339,14 @@ def main() -> None:
         ]
         assert failed
         decisions.append(False)
-        _click_button(_toolbar_button(app, "移除全部失败"))
+        app.update()
+        failed_button = _toolbar_button(app, "移除全部失败")
+        start = _toolbar_button(app, "开始")
+        assert failed_button.winfo_ismapped()
+        list_bottom = app._item_list.winfo_rooty() + app._item_list.winfo_height()
+        assert list_bottom <= failed_button.winfo_rooty() + 4
+        assert failed_button.winfo_rooty() < start.winfo_rooty()
+        _click_button(failed_button)
         app.update_idletasks()
         assert asks == ["移除全部失败"]
         assert "gone.pdf" in _names(app)

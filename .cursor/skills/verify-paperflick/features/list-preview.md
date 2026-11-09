@@ -8,7 +8,7 @@ Disposable `PAPERFLICK_APPDATA`. Construct `MainWindow` headless. Turn Dry Run o
 
 ## Drive
 
-1. Confirm the toolbar has 添加文件 / 添加文件夹 / 移除全部失败 / 重新打印失败项 / 清除已成功, and has neither 移除所选, 预览, nor 只勾选失败项. The list has no checkboxes.
+1. Confirm the add toolbar has 添加文件 / 添加文件夹, and has neither 移除所选, 预览, nor 只勾选失败项. 移除全部失败 / 重新打印失败项 / 清除已成功 exist but stay unmapped until a row has failed; then they sit below the list and above 开始. The list has no checkboxes.
 2. Add two PNGs. Each row shows 移除 at the end.
 3. Click the first row's name, not 移除. The preview exists with the file name, 横向 / 纵向 / 打印机, and 应用到此项 before any thumbnail call. After the window is mapped, the thumbnail runs. The window was mapped when decode started, and lift/focus ran again after it.
 4. Click the second row. The first preview is gone. One preview is open. A thumbnail that returns nothing shows the text fallback.
