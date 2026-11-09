@@ -26,8 +26,26 @@ def _write_pdf(path: Path, width: float, height: float) -> None:
         writer.write(handle)
 
 
+def _click_body(widget: ctk.CTkBaseClass) -> None:
+    """Click the widget canvas the way a row label hit-tests."""
+    canvas = getattr(widget, "_canvas", None)
+    assert canvas is not None
+    canvas.event_generate("<Button-1>", x=4, y=4)
+
+
+def _row_named(app: MainWindow, name: str) -> ctk.CTkFrame:
+    """Return the row whose identity label starts with ``name``."""
+    for row in app._item_list._scroll.winfo_children():
+        if not isinstance(row, ctk.CTkFrame):
+            continue
+        for child in row.winfo_children():
+            if isinstance(child, ctk.CTkLabel) and str(child.cget("text")).startswith(name):
+                return row
+    raise AssertionError(name)
+
+
 def _labels(app: MainWindow) -> list[str]:
-    """Visible row labels, skipping empty checkbox text."""
+    """Visible row labels."""
     labels: list[str] = []
     for row in app._item_list._scroll.winfo_children():
         for child in row.winfo_children():
@@ -61,9 +79,14 @@ def _item(app: MainWindow, name: str) -> PrintItem:
 
 
 def _open_preview(app: MainWindow, name: str) -> PreviewWindow:
-    """Check one row and open its preview."""
-    app._item_list.check_only([_item(app, name).id])
-    app._on_preview()
+    """Click the row identity and return the one open preview."""
+    row = _row_named(app, name)
+    label = next(
+        child
+        for child in row.winfo_children()
+        if isinstance(child, ctk.CTkLabel) and str(child.cget("text")).startswith(name)
+    )
+    _click_body(label)
     preview = app._preview
     assert isinstance(preview, PreviewWindow)
     assert preview.winfo_exists()
@@ -97,13 +120,12 @@ def main() -> None:
         assert orientation_label(_item(app, "tall.png")) == "纵向"
         assert orientation_label(_item(app, "wide.png")) == "横向"
 
-        app._item_list.check_only([])
-        app._on_preview()
-        assert app._preview is None
-        assert app._status_label.cget("text") == "请只勾选一个打印项再预览"
-        app._item_list.check_only([_item(app, "tall.png").id, _item(app, "wide.png").id])
-        app._on_preview()
-        assert app._preview is None
+        first = _open_preview(app, "tall.png")
+        second = _open_preview(app, "wide.png")
+        assert not first.winfo_exists()
+        assert app._preview is second
+        second.destroy()
+        app._preview = None
 
         preview = _open_preview(app, "tall.png")
         preview._choice.set("")

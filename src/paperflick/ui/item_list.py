@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Callable
 
 import customtkinter as ctk
 
@@ -81,12 +81,19 @@ def status_text_color(status: ItemStatus, appearance_mode: str = "light") -> str
 
 
 class ItemListPanel(ctk.CTkFrame):
-    """Scrollable rows for Print Items with multi-select for Remove."""
+    """Scrollable Print Item rows. A row click previews; 移除 drops that row."""
 
-    def __init__(self, master: ctk.CTk | ctk.CTkFrame, **kwargs: object) -> None:
+    def __init__(
+        self,
+        master: ctk.CTk | ctk.CTkFrame,
+        *,
+        on_preview: Callable[[ItemId], None] | None = None,
+        on_remove: Callable[[ItemId], None] | None = None,
+        **kwargs: object,
+    ) -> None:
         super().__init__(master, fg_color="transparent", **kwargs)  # type: ignore[arg-type]
-        self._selected: set[ItemId] = set()
-        self._row_vars: dict[ItemId, ctk.BooleanVar] = {}
+        self._on_preview = on_preview
+        self._on_remove = on_remove
 
         self._scroll = ctk.CTkScrollableFrame(self, height=180)
         self._scroll.pack(fill="both", expand=True)
@@ -94,23 +101,10 @@ class ItemListPanel(ctk.CTkFrame):
         self._empty = ctk.CTkLabel(self._scroll, text="尚未添加打印项", anchor="w")
         self._empty.pack(fill="x", padx=4, pady=8)
 
-    def selected_ids(self) -> list[ItemId]:
-        """Return currently checked item ids."""
-        return [item_id for item_id, var in self._row_vars.items() if var.get()]
-
-    def check_only(self, ids: Collection[ItemId]) -> None:
-        """Check exactly ``ids`` and clear every other row."""
-        wanted = set(ids)
-        for item_id, var in self._row_vars.items():
-            var.set(item_id in wanted)
-
     def bind_snapshot(self, snapshot: BatchSnapshot) -> None:
         """Rebuild rows from a BatchSnapshot."""
-        previous = {item_id for item_id, var in self._row_vars.items() if var.get()}
         for child in self._scroll.winfo_children():
             child.destroy()
-        self._row_vars.clear()
-        self._selected = set()
 
         if not snapshot.items:
             self._empty = ctk.CTkLabel(self._scroll, text="尚未添加打印项", anchor="w")
@@ -119,16 +113,49 @@ class ItemListPanel(ctk.CTkFrame):
 
         appearance = ctk.get_appearance_mode()
         for item in snapshot.items:
-            row = ctk.CTkFrame(self._scroll, fg_color="transparent")
-            row.pack(fill="x", pady=2)
-            checked = item.id in previous
-            var = ctk.BooleanVar(value=checked)
-            self._row_vars[item.id] = var
-            ctk.CTkCheckBox(row, text="", variable=var, width=24).pack(side="left")
-            ctk.CTkLabel(row, text=identity_text(item), anchor="w").pack(side="left", padx=(4, 0))
-            ctk.CTkLabel(
-                row,
-                text=status_text(item),
-                anchor="w",
-                text_color=status_text_color(item.status, appearance),
-            ).pack(side="left", fill="x", expand=True, padx=4)
+            self._build_row(item, appearance)
+
+    def _build_row(self, item: PrintItem, appearance: str) -> None:
+        """One row: identity and status open preview; 移除 does not."""
+        row = ctk.CTkFrame(self._scroll, fg_color="transparent")
+        row.pack(fill="x", pady=2)
+        remove = ctk.CTkButton(
+            row,
+            text="移除",
+            width=64,
+            height=28,
+            fg_color="transparent",
+            text_color=("gray10", "gray90"),
+            hover_color=("gray85", "gray25"),
+            command=lambda item_id=item.id: self._emit_remove(item_id),
+        )
+        remove.pack(side="right", padx=(4, 0))
+        identity = ctk.CTkLabel(row, text=identity_text(item), anchor="w")
+        identity.pack(side="left", padx=(4, 0))
+        status = ctk.CTkLabel(
+            row,
+            text=status_text(item),
+            anchor="w",
+            text_color=status_text_color(item.status, appearance),
+        )
+        status.pack(side="left", fill="x", expand=True, padx=4)
+        self._bind_preview(row, item.id)
+        self._bind_preview(identity, item.id)
+        self._bind_preview(status, item.id)
+
+    def _bind_preview(self, widget: ctk.CTkBaseClass, item_id: ItemId) -> None:
+        """Clicks on the row body open preview. The 移除 button is not bound."""
+        widget.bind(
+            "<Button-1>",
+            lambda _event, item_id=item_id: self._emit_preview(item_id),
+        )
+
+    def _emit_preview(self, item_id: ItemId) -> None:
+        """Forward a row click when a preview handler is set."""
+        if self._on_preview is not None:
+            self._on_preview(item_id)
+
+    def _emit_remove(self, item_id: ItemId) -> None:
+        """Forward 移除 when a remove handler is set."""
+        if self._on_remove is not None:
+            self._on_remove(item_id)

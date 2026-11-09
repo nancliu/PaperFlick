@@ -124,6 +124,23 @@ def test_pause_and_stop(tmp_path: Path) -> None:
     assert snap.waiting_count == 2
 
 
+def test_remove_while_paused_keeps_phase(tmp_path: Path) -> None:
+    """A paused Batch still drops the row RemoveItems names."""
+    session = BatchSession()
+    session.apply(AddPaths([_touch(tmp_path / f"{name}.pdf") for name in ("a", "b", "c")]))
+    session.apply(StartBatch(_prefs(interval=1.0)))
+    session.apply(PauseBatch())
+    assert session.snapshot().phase is BatchPhase.PAUSED
+    waiting_id = next(
+        item.id for item in session.snapshot().items if item.status is ItemStatus.WAITING
+    )
+    session.apply(RemoveItems([waiting_id]))
+    snap = session.snapshot()
+    assert snap.phase is BatchPhase.PAUSED
+    assert len(snap.items) == 2
+    assert all(item.id != waiting_id for item in snap.items)
+
+
 def test_second_start_while_running_is_noop(tmp_path: Path) -> None:
     session = BatchSession()
     clock = session.manual_clock

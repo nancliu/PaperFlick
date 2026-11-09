@@ -1,6 +1,6 @@
 ---
 name: verify-paperflick
-description: Drive the PaperFlick Windows desktop app (CustomTkinter) to prove boot, settings, Dry Run batch, orientation-on-add, preview orientation apply, PDF print via SumatraPDF, image print via Pillow and Windows, DOCX print via Word then OnlyOffice, fail-and-reprint, printer-sidebar behavior, the batch-end success and failure line, and wait-for-empty-queue between items. Use when verifying PaperFlick changes or AppData settings persistence.
+description: Drive the PaperFlick Windows desktop app (CustomTkinter) to prove boot, settings, Dry Run batch, orientation-on-add, preview orientation apply, list click-to-preview with inline remove, preview shown before thumbnail load, PDF print via SumatraPDF, image print via Pillow and Windows, DOCX print via Word then OnlyOffice, fail-and-reprint, printer-sidebar behavior, the batch-end success and failure line, and wait-for-empty-queue between items. Use when verifying PaperFlick changes or AppData settings persistence.
 ---
 
 # Verify PaperFlick
