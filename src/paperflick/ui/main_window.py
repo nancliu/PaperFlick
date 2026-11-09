@@ -86,8 +86,8 @@ class MainWindow(ctk.CTk):
     ) -> None:
         super().__init__()
         self.title("PaperFlick")
-        self.geometry("780x520")
-        self.minsize(640, 420)
+        self.geometry("780x640")
+        self.minsize(640, 500)
 
         self._settings = settings if settings is not None else load()
         if submit_script is not None:
