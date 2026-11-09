@@ -27,6 +27,20 @@ _FACING_LABEL = {
     Facing.PORTRAIT: "纵向",
 }
 
+# Okabe–Ito-inspired semantic text colors; Waiting gray tuned per appearance.
+_STATUS_COLOR_LIGHT = {
+    ItemStatus.WAITING: "#6C6C6C",
+    ItemStatus.PRINTING: "#0072B2",
+    ItemStatus.SUCCESS: "#009E73",
+    ItemStatus.FAILED: "#D55E00",
+}
+_STATUS_COLOR_DARK = {
+    ItemStatus.WAITING: "#B8B8B8",
+    ItemStatus.PRINTING: "#56B4E9",
+    ItemStatus.SUCCESS: "#2ECC9A",
+    ItemStatus.FAILED: "#FF7A1A",
+}
+
 
 def orientation_label(item: PrintItem) -> str:
     """Return the orientation cell text for one Print Item.
@@ -40,14 +54,30 @@ def orientation_label(item: PrintItem) -> str:
     return _FACING_LABEL[facing]
 
 
-def _row_text(item: PrintItem) -> str:
-    """Row label with facing, status, and failure reason when present."""
+def identity_text(item: PrintItem) -> str:
+    """Return the uncolored name and facing segment for a row."""
     name = item.path.name or str(item.path)
+    return f"{name}  {orientation_label(item)}"
+
+
+def status_text(item: PrintItem) -> str:
+    """Return the colored status segment, including failure reason when present."""
     status = _STATUS_LABEL.get(item.status, item.status.value)
-    facing = orientation_label(item)
     if item.status is ItemStatus.FAILED and item.failure_reason:
-        return f"{name}  {facing}  [{status}]  {item.failure_reason}"
-    return f"{name}  {facing}  [{status}]"
+        return f"[{status}]  {item.failure_reason}"
+    return f"[{status}]"
+
+
+def status_text_color(status: ItemStatus, appearance_mode: str = "light") -> str:
+    """Map ItemStatus to a colorblind-friendly text color for the given mode.
+
+    ``appearance_mode`` accepts CustomTkinter values such as ``Light`` / ``Dark``
+    (case-insensitive). Unknown values fall back to the light palette.
+    """
+    palette = (
+        _STATUS_COLOR_DARK if appearance_mode.strip().lower() == "dark" else _STATUS_COLOR_LIGHT
+    )
+    return palette[status]
 
 
 class ItemListPanel(ctk.CTkFrame):
@@ -87,6 +117,7 @@ class ItemListPanel(ctk.CTkFrame):
             self._empty.pack(fill="x", padx=4, pady=8)
             return
 
+        appearance = ctk.get_appearance_mode()
         for item in snapshot.items:
             row = ctk.CTkFrame(self._scroll, fg_color="transparent")
             row.pack(fill="x", pady=2)
@@ -94,6 +125,10 @@ class ItemListPanel(ctk.CTkFrame):
             var = ctk.BooleanVar(value=checked)
             self._row_vars[item.id] = var
             ctk.CTkCheckBox(row, text="", variable=var, width=24).pack(side="left")
-            ctk.CTkLabel(row, text=_row_text(item), anchor="w").pack(
-                side="left", fill="x", expand=True, padx=4
-            )
+            ctk.CTkLabel(row, text=identity_text(item), anchor="w").pack(side="left", padx=(4, 0))
+            ctk.CTkLabel(
+                row,
+                text=status_text(item),
+                anchor="w",
+                text_color=status_text_color(item.status, appearance),
+            ).pack(side="left", fill="x", expand=True, padx=4)
