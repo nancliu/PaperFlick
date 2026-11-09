@@ -5,10 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import uuid4
 
-import pytest
+import pymupdf
 from PIL import Image
-
-pymupdf = pytest.importorskip("pymupdf")
 
 from paperflick.core.batch import DocKind, ItemId, ItemStatus, Orientation, PrintItem, Unread
 from paperflick.ui.preview_window import _page_image
