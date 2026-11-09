@@ -89,6 +89,14 @@ _FORMATS: tuple[_Format, ...] = (
 _BY_SUFFIX: dict[str, _Format] = {suffix: fmt for fmt in _FORMATS for suffix in fmt.suffixes}
 
 
+def kind_for_path(path: Path) -> DocKind:
+    """Classify by suffix only. Unknown extensions are DocKind.UNKNOWN."""
+    fmt = _BY_SUFFIX.get(path.suffix.lower())
+    if fmt is None:
+        return DocKind.UNKNOWN
+    return fmt.kind
+
+
 def probe(path: Path) -> Probe:
     """Classify a path and measure its first page.
 
