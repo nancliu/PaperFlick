@@ -10,6 +10,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from paperflick.core.batch import ApplyScope, DocKind, ItemId, Orientation, PrintItem
+from paperflick.core.shell_thumbnail import ShellThumbnailPort, windows_shell_thumbnail
 from paperflick.ui.item_list import orientation_label
 
 ApplyHandler = Callable[[ItemId, Orientation, ApplyScope], bool]
@@ -65,12 +66,38 @@ def _pdf_page(path: Path) -> Image.Image | None:
         doc.close()
 
 
-def _page_image(item: PrintItem) -> Image.Image | None:
+def _docx_page(
+    path: Path,
+    shell_thumbnail: ShellThumbnailPort | None = None,
+) -> Image.Image | None:
+    """Return a Shell first-page thumbnail for DOCX/DOC, or None on failure."""
+    get_thumb = shell_thumbnail if shell_thumbnail is not None else windows_shell_thumbnail
+    try:
+        frame = get_thumb(path)
+    except Exception:
+        return None
+    if frame is None:
+        return None
+    try:
+        rgb = frame.convert("RGB")
+        rgb.thumbnail(_THUMB_SIZE)
+        return rgb
+    except Exception:
+        return None
+
+
+def _page_image(
+    item: PrintItem,
+    *,
+    shell_thumbnail: ShellThumbnailPort | None = None,
+) -> Image.Image | None:
     """Return a page thumbnail for kinds that can be drawn, else None."""
     if item.kind is DocKind.IMAGE:
         return _image_page(item.path)
     if item.kind is DocKind.PDF:
         return _pdf_page(item.path)
+    if item.kind is DocKind.DOCX:
+        return _docx_page(item.path, shell_thumbnail)
     return None
 
 
@@ -113,7 +140,7 @@ class PreviewWindow(ctk.CTkToplevel):
         ).pack(fill="x", padx=16, pady=(0, 8))
 
     def _build_page(self, item: PrintItem) -> None:
-        """Draw an image or PDF thumbnail. Other kinds keep a text fallback."""
+        """Draw an image, PDF, or DOCX Shell thumbnail. Else keep text fallback."""
         drawn = _page_image(item)
         if drawn is None:
             ctk.CTkLabel(

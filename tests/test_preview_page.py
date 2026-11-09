@@ -1,4 +1,4 @@
-"""Page thumbnails for preview: image and PDF first page."""
+"""Page thumbnails for preview: image, PDF, and DOCX Shell first page."""
 
 from __future__ import annotations
 
@@ -47,10 +47,42 @@ def test_page_image_for_pdf(tmp_path: Path) -> None:
     assert drawn.height <= 240
 
 
-def test_page_image_docx_is_none(tmp_path: Path) -> None:
+def test_page_image_docx_without_shell_is_none(tmp_path: Path) -> None:
     path = tmp_path / "a.docx"
     path.write_bytes(b"not-a-real-docx")
-    assert _page_image(_item(path, DocKind.DOCX)) is None
+    assert _page_image(_item(path, DocKind.DOCX), shell_thumbnail=lambda _: None) is None
+
+
+def test_page_image_docx_with_fake_shell(tmp_path: Path) -> None:
+    path = tmp_path / "a.docx"
+    path.write_bytes(b"not-a-real-docx")
+    fake = Image.new("RGB", (200, 100), color=(40, 50, 60))
+
+    drawn = _page_image(_item(path, DocKind.DOCX), shell_thumbnail=lambda _: fake)
+    assert drawn is not None
+    assert drawn.width <= 360
+    assert drawn.height <= 240
+    assert drawn.getpixel((0, 0)) == (40, 50, 60)
+
+
+def test_page_image_docx_generic_icon_signal_is_none(tmp_path: Path) -> None:
+    path = tmp_path / "a.doc"
+    path.write_bytes(b"legacy-doc-bytes")
+
+    def generic_icon(_path: Path) -> Image.Image | None:
+        return None
+
+    assert _page_image(_item(path, DocKind.DOCX), shell_thumbnail=generic_icon) is None
+
+
+def test_page_image_docx_shell_raise_is_none(tmp_path: Path) -> None:
+    path = tmp_path / "a.docx"
+    path.write_bytes(b"x")
+
+    def boom(_path: Path) -> Image.Image | None:
+        raise RuntimeError("shell unavailable")
+
+    assert _page_image(_item(path, DocKind.DOCX), shell_thumbnail=boom) is None
 
 
 def test_page_image_bad_pdf_is_none(tmp_path: Path) -> None:
