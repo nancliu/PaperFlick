@@ -59,7 +59,15 @@ def test_main_window_boot_printer_and_interval_persist(
 
     app = MainWindow(submit_script=SubmitScript((SubmitFailed("卡纸"),)))
     app.update_idletasks()
+    # CTk on Windows only settles geometry after the first update()/map.
+    app.update()
     assert app.title() == "PaperFlick"
+    width, height = (int(part) for part in app.geometry().split("+", 1)[0].split("x"))
+    assert width >= 780
+    assert height >= 640
+    # CTk.minsize is setter-only; logical floors live on the scaling attrs.
+    assert app._min_width >= 640
+    assert app._min_height >= 500
     assert app._settings.interval_seconds == 2.0
     assert app._printer_sidebar.selected_name() == "Mock Printer B"
 
