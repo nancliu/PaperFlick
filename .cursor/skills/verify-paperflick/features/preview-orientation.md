@@ -27,7 +27,8 @@ Disposable `PAPERFLICK_APPDATA`. Construct `MainWindow` headless (or launch the 
 - Dry Run finishes with no printer. Orientations are unchanged while statuses become success.
 - Checking zero rows or two rows does not open a preview. The status line asks for one checked item.
 - Opening a preview with no radio chosen does not change the list.
-- Image and PDF previews draw a first-page thumbnail; DOCX keeps the text fallback.
+- Image and PDF previews draw a first-page thumbnail; DOCX draws a Windows Shell
+  first-page thumbnail when a preview handler exists, otherwise the text fallback.
 
 ## Evidence
 
