@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
 from tkinter import filedialog, messagebox
@@ -43,6 +44,14 @@ from paperflick.core.submit import (
 from paperflick.ui.item_list import ItemListPanel
 from paperflick.ui.preview_window import PreviewWindow
 from paperflick.ui.printer_sidebar import PrinterSidebar
+from paperflick.ui.sidebar_split import (
+    SIDEBAR_DEFAULT_PX,
+    SIDEBAR_MIN_PX,
+    clamp_sidebar_width,
+    displayed_sidebar_width,
+    remember_sidebar_width,
+    session_sidebar_preferred_px,
+)
 
 
 def _dry_run_factory(script: SubmitScript) -> Callable[[BatchPrefs], PrintSubmitPort]:
@@ -124,21 +133,9 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.pack(fill="both", expand=True, padx=12, pady=12)
-        body.grid_columnconfigure(1, weight=1)
+        body.grid_columnconfigure(0, weight=1)
         body.grid_rowconfigure(0, weight=1)
-
-        printers = list_installed_printers()
-        self._printer_sidebar = PrinterSidebar(
-            body,
-            printers=printers,
-            selected=self._settings.selected_printer,
-            on_select=self._on_printer_selected,
-            width=200,
-        )
-        self._printer_sidebar.grid(row=0, column=0, sticky="nsw", padx=(0, 12))
-
-        root = ctk.CTkFrame(body, fg_color="transparent")
-        root.grid(row=0, column=1, sticky="nsew")
+        root = self._build_printer_split(body)
 
         ctk.CTkLabel(root, text="纸闪 PaperFlick", font=ctk.CTkFont(size=18, weight="bold")).pack(
             anchor="w", pady=(0, 12)
@@ -230,6 +227,177 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             and self._printer_sidebar.selected_name() is not None
         ):
             self._persist()
+
+    def _build_printer_split(self, body: ctk.CTkFrame) -> ctk.CTkFrame:
+        """Build the printer sidebar and the content pane around a draggable sash.
+
+        The left pane starts near 280px in the same units as the 780×640
+        geometry. Dragging stays between 200px and half the window. High-DPI
+        scaling is applied at the paned window. The position lasts for this
+        process only.
+        """
+        self._sash_dragging = False
+        self._syncing_sash = False
+        self._split = tk.PanedWindow(
+            body,
+            orient=tk.HORIZONTAL,
+            sashwidth=6,
+            sashrelief=tk.FLAT,
+            sashcursor="sb_h_double_arrow",
+            opaqueresize=True,
+            bd=0,
+            bg=self._paned_background(),
+        )
+        self._split.grid(row=0, column=0, sticky="nsew")
+
+        initial = displayed_sidebar_width(self._layout_window_width())
+        self._printer_sidebar = PrinterSidebar(
+            self._split,
+            printers=list_installed_printers(),
+            selected=self._settings.selected_printer,
+            on_select=self._on_printer_selected,
+            width=initial,
+        )
+        minimum = self._physical_px(SIDEBAR_MIN_PX)
+        self._split.add(
+            self._printer_sidebar,
+            minsize=minimum,
+            width=self._physical_px(initial),
+            stretch="never",
+        )
+        root = ctk.CTkFrame(self._split, fg_color="transparent")
+        self._split_content = root
+        self._split.add(root, minsize=minimum, stretch="always")
+        self._split.bind("<ButtonPress-1>", self._on_sidebar_sash_press)
+        self._split.bind("<B1-Motion>", self._on_sidebar_sash_drag)
+        self._split.bind("<ButtonRelease-1>", self._on_sidebar_sash_release)
+        self._split.bind("<Configure>", self._on_sidebar_split_configure)
+        return root
+
+    def _paned_background(self) -> str:
+        """Match the paned sash track to the main window background."""
+        applied = self._apply_appearance_mode(self.cget("fg_color"))
+        if isinstance(applied, str) and applied not in {"", "transparent"}:
+            return applied
+        return "gray20"
+
+    def _window_scaling(self) -> float:
+        """Return the CustomTkinter window scale. 1 means geometry pixels match the screen."""
+        scaling = float(self._get_window_scaling())
+        if scaling <= 0:
+            return 1.0
+        return scaling
+
+    def _physical_px(self, logical: int) -> int:
+        """Convert a geometry pixel count into paned-window pixels."""
+        return max(1, int(round(logical * self._window_scaling())))
+
+    def _logical_px(self, physical: int) -> int:
+        """Convert a paned-window pixel count into geometry pixels."""
+        return int(round(physical / self._window_scaling()))
+
+    def _layout_window_width(self) -> int:
+        """Return the window width in geometry pixels, the same space as 780×640."""
+        width = int(self.winfo_width())
+        if width > 1:
+            return max(1, self._logical_px(width))
+        raw = self.geometry().split("+", 1)[0].split("x")[0]
+        try:
+            parsed = int(raw)
+        except ValueError:
+            return 780
+        return parsed if parsed > 1 else 780
+
+    def _apply_sidebar_sash(self, requested_px: int, *, remember: bool) -> int:
+        """Move the left pane to ``requested_px`` geometry pixels, clamped to the drag range."""
+        shown = clamp_sidebar_width(requested_px, self._layout_window_width())
+        if remember:
+            remember_sidebar_width(shown)
+        self._place_sidebar_sash(shown)
+        return shown
+
+    def _sync_sidebar_sash(self) -> None:
+        """Re-clamp the remembered sash after the window size changes."""
+        if self._sash_dragging:
+            return
+        preferred = session_sidebar_preferred_px()
+        requested = SIDEBAR_DEFAULT_PX if preferred is None else preferred
+        shown = clamp_sidebar_width(requested, self._layout_window_width())
+        self._place_sidebar_sash(shown)
+
+    def _place_sidebar_sash(self, shown: int) -> None:
+        """Move the sash to ``shown`` geometry pixels when it is not already there."""
+        if self._syncing_sash:
+            return
+        physical = self._physical_px(shown)
+        self._apply_pane_minsize()
+        try:
+            current = int(self._split.sash_coord(0)[0])
+        except tk.TclError:
+            return
+        if abs(current - physical) <= max(1, int(round(self._window_scaling()))):
+            return
+        self._syncing_sash = True
+        try:
+            self._commit_sash(physical)
+        finally:
+            self._syncing_sash = False
+
+    def _commit_sash(self, physical: int) -> None:
+        """Place the sash, then place it once more if the pane's request blocked the first move."""
+        tolerance = max(1, int(round(self._window_scaling())))
+        try:
+            self._split.sash_place(0, physical, 1)
+            current = int(self._split.sash_coord(0)[0])
+            if abs(current - physical) <= tolerance:
+                return
+            self.update_idletasks()
+            self._split.sash_place(0, physical, 1)
+        except tk.TclError:
+            return
+
+    def _apply_pane_minsize(self) -> None:
+        """Keep both panes from shrinking below 200 geometry pixels."""
+        minimum = self._physical_px(SIDEBAR_MIN_PX)
+        try:
+            self._split.paneconfigure(self._printer_sidebar, minsize=minimum)
+        except tk.TclError:
+            return
+        content = getattr(self, "_split_content", None)
+        if content is None:
+            return
+        try:
+            self._split.paneconfigure(content, minsize=minimum)
+        except tk.TclError:
+            return
+
+    def _on_sidebar_sash_press(self, event: tk.Event) -> str | None:
+        """Start a sidebar drag when the pointer is on the sash."""
+        if "sash" not in str(self._split.identify(event.x, event.y)):
+            return None
+        self._sash_dragging = True
+        return "break"
+
+    def _on_sidebar_sash_drag(self, event: tk.Event) -> str | None:
+        """Keep a dragged sash inside 200px .. half the window."""
+        if not self._sash_dragging:
+            return None
+        self._apply_sidebar_sash(self._logical_px(int(event.x)), remember=False)
+        return "break"
+
+    def _on_sidebar_sash_release(self, event: tk.Event) -> str | None:
+        """Remember the released sash for the rest of this process."""
+        if not self._sash_dragging:
+            return None
+        self._sash_dragging = False
+        self._apply_sidebar_sash(self._logical_px(int(event.x)), remember=True)
+        return "break"
+
+    def _on_sidebar_split_configure(self, event: tk.Event) -> None:
+        """Keep the sash in range when the split or the window changes size."""
+        if event.widget is not self._split or self._sash_dragging or self._syncing_sash:
+            return
+        self._sync_sidebar_sash()
 
     def _tk_schedule(self, delay_seconds: float, callback: object) -> str:
         ms = max(0, int(delay_seconds * 1000))
