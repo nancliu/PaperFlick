@@ -5,6 +5,7 @@ One MainWindow per process. Windows+conda Tk is flaky after destroy+recreate.
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 
@@ -12,9 +13,13 @@ import customtkinter as ctk
 import pytest
 
 from paperflick.core.batch import AddPaths, BatchPhase
-from paperflick.core.settings import Settings, load, save
+from paperflick.core.settings import Settings, load, save, settings_path
 from paperflick.core.submit import SubmitFailed, SubmitScript
 from paperflick.ui.main_window import MainWindow
+from paperflick.ui.sidebar_split import (
+    reset_sidebar_split_session,
+    session_sidebar_preferred_px,
+)
 
 
 def _wait_batch_finished(app: MainWindow) -> None:
@@ -84,10 +89,16 @@ def test_main_window_boot_printer_and_interval_persist(
     tmp_path: Path, monkeypatch, require_tk
 ) -> None:
     monkeypatch.setenv("PAPERFLICK_APPDATA", str(tmp_path))
+    long_name = "Mock Printer With An Unreasonably Long Name For Clipping"
     monkeypatch.setattr(
         "paperflick.ui.main_window.list_installed_printers",
-        lambda: ["Mock Printer A", "Mock Printer B"],
+        lambda: [long_name, "Mock Printer A", "Mock Printer B"],
     )
+    monkeypatch.setattr(
+        "paperflick.ui.printer_sidebar.system_default_printer",
+        lambda: "Mock Printer A",
+    )
+    reset_sidebar_split_session()
     save(Settings(interval_seconds=2.0, selected_printer="Mock Printer B"))
 
     app = MainWindow(submit_script=SubmitScript((SubmitFailed("卡纸"),)))
@@ -103,6 +114,18 @@ def test_main_window_boot_printer_and_interval_persist(
     assert app._min_height >= 500
     assert app._settings.interval_seconds == 2.0
     assert app._printer_sidebar.selected_name() == "Mock Printer B"
+    assert session_sidebar_preferred_px() is None
+    assert app._split.sash_coord(0)[0] == pytest.approx(app._physical_px(280), abs=8)
+    assert app._printer_sidebar.radio_text("Mock Printer A") == "Mock Printer A（默认）"
+    assert app._printer_sidebar.radio_value("Mock Printer A") == "Mock Printer A"
+    assert app._printer_sidebar.hover_text("Mock Printer A") == "Mock Printer A"
+    assert app._printer_sidebar.radio_text("Mock Printer B") == "Mock Printer B"
+    assert app._printer_sidebar.radio_value(long_name) == long_name
+    assert app._printer_sidebar.hover_text(long_name) == long_name
+    assert app._printer_sidebar.show_hover(long_name, x_root=30, y_root=40) == long_name
+    assert app._printer_sidebar.hover_popup_text() == long_name
+    app._printer_sidebar.hide_hover()
+    assert app._printer_sidebar.hover_popup_text() is None
 
     app._interval_var.set("7.5")
     app._on_interval_typed()
@@ -111,6 +134,30 @@ def test_main_window_boot_printer_and_interval_persist(
 
     app._on_printer_selected("Mock Printer A")
     assert load().selected_printer == "Mock Printer A"
+    assert "（默认）" not in (load().selected_printer or "")
+
+    logical_width = app._layout_window_width()
+    assert app._apply_sidebar_sash(50, remember=True) == 200
+    assert session_sidebar_preferred_px() == 200
+    app.update_idletasks()
+    assert app._split.sash_coord(0)[0] == pytest.approx(app._physical_px(200), abs=8)
+    assert app._printer_sidebar.winfo_width() == pytest.approx(app._physical_px(200), abs=12)
+    half = logical_width // 2
+    assert app._apply_sidebar_sash(logical_width, remember=True) == half
+    assert session_sidebar_preferred_px() == half
+    app.update_idletasks()
+    assert app._split.sash_coord(0)[0] == pytest.approx(app._physical_px(half), abs=8)
+    app._sync_sidebar_sash()
+    assert session_sidebar_preferred_px() == half
+    raw = json.loads(settings_path().read_text(encoding="utf-8"))
+    assert set(raw) == {
+        "interval_seconds",
+        "wait_for_empty_queue",
+        "dry_run",
+        "selected_printer",
+    }
+    assert raw["selected_printer"] == "Mock Printer A"
+    app._apply_sidebar_sash(280, remember=True)
 
     bad = tmp_path / "bad.pdf"
     good = tmp_path / "good.pdf"
