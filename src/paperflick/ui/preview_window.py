@@ -30,6 +30,7 @@ _CHOICES = (
 
 
 _THUMB_SIZE = (360, 240)
+PAGE_FALLBACK_TEXT = "此类型暂不绘制页面，仍可选择方向并应用"
 
 
 def _image_page(path: Path) -> Image.Image | None:
@@ -102,7 +103,11 @@ def _page_image(
 
 
 class PreviewWindow(ctk.CTkToplevel):
-    """Choose Landscape, Portrait, or PrinterDefault and apply it."""
+    """Choose Landscape, Portrait, or PrinterDefault and apply it.
+
+    Chrome (summary, orientation, actions) is shown before any thumbnail work.
+    Raster runs on the next idle turn after the window is mapped.
+    """
 
     def __init__(self, master: ctk.CTk, item: PrintItem, on_apply: ApplyHandler) -> None:
         super().__init__(master)
@@ -110,21 +115,27 @@ class PreviewWindow(ctk.CTkToplevel):
         self.geometry("440x520")
         self.minsize(360, 420)
         self._anchor = item.id
+        self._item = item
         self._on_apply = on_apply
         self._photo: ctk.CTkImage | None = None
+        self._raster_queued = False
+        self._raster_done = False
         initial = "" if item.orientation is Orientation.AUTO else item.orientation.value
         self._choice = ctk.StringVar(value=initial)
 
         self._build_summary(item)
-        self._build_page(item)
+        self._page_slot = ctk.CTkFrame(self, fg_color="transparent")
+        self._page_slot.pack(fill="x", padx=16, pady=8)
         self._build_choices()
         self._hint = ctk.CTkLabel(self, text="", anchor="w", text_color="gray")
         self._hint.pack(fill="x", padx=16, pady=(4, 0))
         self._build_actions()
 
         self.transient(master)
-        self.lift()
-        self.focus_force()
+        self.bind("<Map>", self._on_map, add="+")
+        self.deiconify()
+        self._raise_into_view()
+        self.after_idle(self._kick_raster)
 
     def _build_summary(self, item: PrintItem) -> None:
         """Show the file name, kind, and current list mark."""
@@ -139,19 +150,59 @@ class PreviewWindow(ctk.CTkToplevel):
             anchor="w",
         ).pack(fill="x", padx=16, pady=(0, 8))
 
-    def _build_page(self, item: PrintItem) -> None:
-        """Draw an image, PDF, or DOCX Shell thumbnail. Else keep text fallback."""
-        drawn = _page_image(item)
+    def _on_map(self, _event: object = None) -> None:
+        """Map happened. Raster on a later idle turn so this handler stays light."""
+        self.after_idle(self._kick_raster)
+
+    def _kick_raster(self) -> None:
+        """Queue thumbnail work only once the window is mapped."""
+        if not self.winfo_exists() or self._raster_queued or self._raster_done:
+            return
+        if not self.winfo_ismapped():
+            self.after(10, self._kick_raster)
+            return
+        self._raster_queued = True
+        self._raise_into_view()
+        self.after_idle(self._raster_page)
+
+    def _raster_page(self) -> None:
+        """Draw a thumbnail or the text fallback. Never run this from ``__init__``."""
+        if not self.winfo_exists() or self._raster_done:
+            return
+        self._raster_done = True
+        drawn: Image.Image | None = None
+        try:
+            drawn = _page_image(self._item)
+        except Exception:
+            drawn = None
+        if not self.winfo_exists():
+            return
+        self._show_page(drawn)
+        self._raise_into_view()
+
+    def _show_page(self, drawn: Image.Image | None) -> None:
+        """Fill the page slot. ``None`` keeps the text fallback."""
+        if not self._page_slot.winfo_exists():
+            return
+        for child in self._page_slot.winfo_children():
+            child.destroy()
         if drawn is None:
             ctk.CTkLabel(
-                self,
-                text="此类型暂不绘制页面，仍可选择方向并应用",
+                self._page_slot,
+                text=PAGE_FALLBACK_TEXT,
                 anchor="w",
                 wraplength=380,
-            ).pack(fill="x", padx=16, pady=8)
+            ).pack(fill="x")
             return
         self._photo = ctk.CTkImage(light_image=drawn, size=(drawn.width, drawn.height))
-        ctk.CTkLabel(self, text="", image=self._photo).pack(padx=16, pady=8)
+        ctk.CTkLabel(self._page_slot, text="", image=self._photo).pack()
+
+    def _raise_into_view(self) -> None:
+        """Lift and focus so the preview stays in front after map and raster."""
+        if not self.winfo_exists():
+            return
+        self.lift()
+        self.focus_force()
 
     def _build_choices(self) -> None:
         """Radios for the three preview policies. Auto is not offered."""

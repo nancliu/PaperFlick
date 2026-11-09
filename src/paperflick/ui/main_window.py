@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 from tkinterdnd2 import DND_FILES, TkinterDnD
@@ -184,17 +184,11 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         ctk.CTkButton(list_toolbar, text="添加文件夹", width=90, command=self._on_add_folder).pack(
             side="left", padx=(0, 6)
         )
-        ctk.CTkButton(
-            list_toolbar, text="移除所选", width=90, command=self._on_remove_selected
-        ).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(list_toolbar, text="预览", width=70, command=self._on_preview).pack(
-            side="left"
-        )
 
         fail_toolbar = ctk.CTkFrame(drop_area, fg_color="transparent")
         fail_toolbar.pack(fill="x", pady=(0, 4))
         ctk.CTkButton(
-            fail_toolbar, text="只勾选失败项", width=120, command=self._on_select_only_failed
+            fail_toolbar, text="移除全部失败", width=120, command=self._on_remove_all_failed
         ).pack(side="left", padx=(0, 6))
         ctk.CTkButton(
             fail_toolbar, text="重新打印失败项", width=130, command=self._on_reprint_failed
@@ -203,7 +197,11 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             fail_toolbar, text="清除已成功", width=110, command=self._on_clear_succeeded
         ).pack(side="left")
 
-        self._item_list = ItemListPanel(drop_area)
+        self._item_list = ItemListPanel(
+            drop_area,
+            on_preview=self._on_preview_item,
+            on_remove=self._on_remove_item,
+        )
         self._item_list.pack(fill="both", expand=True, pady=4)
         self._wire_drop_targets(drop_area, list_toolbar, fail_toolbar, self._item_list)
 
@@ -278,22 +276,27 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             return
         self._session.apply(AddPaths([Path(folder)]))
 
-    def _on_remove_selected(self) -> None:
-        ids = self._item_list.selected_ids()
-        if not ids:
-            return
-        self._session.apply(RemoveItems(ids))
+    def _on_remove_item(self, item_id: ItemId) -> None:
+        """Remove one Print Item. No confirm; allowed while a Batch is active."""
+        self._session.apply(RemoveItems((item_id,)))
 
-    def _on_preview(self) -> None:
-        """Open a preview for the single checked Print Item."""
-        ids = self._item_list.selected_ids()
-        if len(ids) != 1:
-            self._status_label.configure(text="请只勾选一个打印项再预览")
+    def _on_remove_all_failed(self) -> None:
+        """Confirm, then remove every FAILED Print Item."""
+        failed = self._session.snapshot().ids_with(ItemStatus.FAILED)
+        if not failed:
             return
-        anchor = ids[0]
-        item = next((row for row in self._session.snapshot().items if row.id == anchor), None)
+        if not messagebox.askyesno(
+            "移除全部失败",
+            "将从列表中移除全部失败的打印项。是否继续？",
+            parent=self,
+        ):
+            return
+        self._session.apply(RemoveItems(failed))
+
+    def _on_preview_item(self, item_id: ItemId) -> None:
+        """Close any open preview, then open this Print Item."""
+        item = next((row for row in self._session.snapshot().items if row.id == item_id), None)
         if item is None:
-            self._status_label.configure(text="请只勾选一个打印项再预览")
             return
         self._close_preview()
         self._preview = PreviewWindow(self, item, self._apply_orientation)
@@ -327,20 +330,14 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
             preview.destroy()
         self._preview = None
 
-    def _on_select_only_failed(self) -> None:
-        failed = self._session.snapshot().ids_with(ItemStatus.FAILED)
-        self._item_list.check_only(failed)
-
     def _on_reprint_failed(self) -> None:
         self._persist()
         before = self._session.snapshot()
         if before.phase is not BatchPhase.IDLE or before.failed_count == 0:
             return
-        failed = before.ids_with(ItemStatus.FAILED)
         self._status_label.configure(text="")
         prefs = BatchPrefs.from_settings(self._settings)
         self._session.apply(ReprintFailed(StartBatch(prefs=prefs)))
-        self._item_list.check_only(failed)
 
     def _on_clear_succeeded(self) -> None:
         self._session.apply(ClearSucceeded())

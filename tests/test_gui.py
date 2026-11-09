@@ -11,7 +11,7 @@ from pathlib import Path
 import customtkinter as ctk
 import pytest
 
-from paperflick.core.batch import AddPaths, BatchPhase, ItemStatus
+from paperflick.core.batch import AddPaths, BatchPhase
 from paperflick.core.settings import Settings, load, save
 from paperflick.core.submit import SubmitFailed, SubmitScript
 from paperflick.ui.main_window import MainWindow
@@ -34,7 +34,7 @@ def _wait_batch_finished(app: MainWindow) -> None:
 
 
 def _row_labels(app: MainWindow) -> list[str]:
-    """Visible row labels, skipping empty checkbox text."""
+    """Visible row labels."""
     labels: list[str] = []
     for row in app._item_list._scroll.winfo_children():
         for child in row.winfo_children():
@@ -44,6 +44,39 @@ def _row_labels(app: MainWindow) -> list[str]:
             if text:
                 labels.append(text)
     return labels
+
+
+def _collect_button_texts(widget: object) -> list[str]:
+    """Button captions under ``widget``, including row actions."""
+    texts: list[str] = []
+    if isinstance(widget, ctk.CTkButton):
+        texts.append(str(widget.cget("text")))
+    children = getattr(widget, "winfo_children", None)
+    if children is None:
+        return texts
+    for child in children():
+        texts.extend(_collect_button_texts(child))
+    return texts
+
+
+def _contains_checkbox(widget: object) -> bool:
+    """True when ``widget`` or a descendant is a checkbox."""
+    if isinstance(widget, ctk.CTkCheckBox):
+        return True
+    children = getattr(widget, "winfo_children", None)
+    if children is None:
+        return False
+    return any(_contains_checkbox(child) for child in children())
+
+
+def _row_remove_count(app: MainWindow) -> int:
+    """How many inline 移除 buttons the list is showing."""
+    count = 0
+    for row in app._item_list._scroll.winfo_children():
+        for child in row.winfo_children():
+            if isinstance(child, ctk.CTkButton) and str(child.cget("text")) == "移除":
+                count += 1
+    return count
 
 
 @pytest.mark.gui
@@ -95,9 +128,13 @@ def test_main_window_boot_printer_and_interval_persist(
     assert app._status_label.cget("text") == "本批完成：成功 1、失败 1"
     assert snap.items[0].failure_reason == "卡纸"
     assert any("卡纸" in text for text in _row_labels(app))
-
-    app._on_select_only_failed()
-    assert app._item_list.selected_ids() == snap.ids_with(ItemStatus.FAILED)
+    button_texts = _collect_button_texts(app)
+    assert "移除全部失败" in button_texts
+    assert "移除所选" not in button_texts
+    assert "预览" not in button_texts
+    assert "只勾选失败项" not in button_texts
+    assert _row_remove_count(app) == len(snap.items)
+    assert not _contains_checkbox(app._item_list)
 
     app._on_clear_succeeded()
     cleared = app._session.snapshot()
@@ -113,10 +150,8 @@ def test_main_window_boot_printer_and_interval_persist(
     assert app._status_label.cget("text") == "本批完成：成功 1、失败 0"
     assert reprinted.items[0].failure_reason is None
 
-    selected = app._item_list.selected_ids()
     app._status_label.configure(text="keep")
     app._on_reprint_failed()
-    assert app._item_list.selected_ids() == selected
     assert app._status_label.cget("text") == "keep"
 
     app.destroy()
