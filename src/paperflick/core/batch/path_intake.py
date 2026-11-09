@@ -17,14 +17,21 @@ def expand_paths(paths: Sequence[Path]) -> list[PrintItem]:
     """
     seen: set[Path] = set()
     items: list[PrintItem] = []
+    for path in iter_intake_files(paths):
+        _append_file(path, seen, items)
+    return items
+
+
+def iter_intake_files(paths: Sequence[Path]) -> list[Path]:
+    """Expand folders to files in AddPaths order. Non-directories stay as-is."""
+    files: list[Path] = []
     for raw in paths:
         path = Path(raw)
         if path.is_dir():
-            for child in _iter_files(path):
-                _append_file(child, seen, items)
+            files.extend(_iter_files(path))
         else:
-            _append_file(path, seen, items)
-    return items
+            files.append(path)
+    return files
 
 
 def _iter_files(directory: Path) -> list[Path]:

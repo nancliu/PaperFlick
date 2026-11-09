@@ -5,6 +5,7 @@ from pathlib import Path
 from tkinter import filedialog
 
 import customtkinter as ctk
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from paperflick.core.batch import (
     AddPaths,
@@ -27,6 +28,7 @@ from paperflick.core.batch import (
     StartBatch,
     StopBatch,
 )
+from paperflick.core.batch.drop_intake import classify_dropped_paths, parse_dnd_files_payload
 from paperflick.core.batch.gate import SpoolerProbe
 from paperflick.core.printers import list_installed_printers, selected_printer_for_persist
 from paperflick.core.settings import Settings, coerce_interval_seconds, load, save
@@ -72,7 +74,7 @@ def _port_factory(
     return factory
 
 
-class MainWindow(ctk.CTk):
+class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
     def __init__(
         self,
         settings: Settings | None = None,
@@ -85,6 +87,7 @@ class MainWindow(ctk.CTk):
         spooler: SpoolerProbe | None = None,
     ) -> None:
         super().__init__()
+        self.TkdndVersion = TkinterDnD.require(self)
         self.title("PaperFlick")
         self.geometry("780x640")
         self.minsize(640, 500)
@@ -170,7 +173,10 @@ class MainWindow(ctk.CTk):
             command=self._persist,
         ).pack(anchor="w", pady=4)
 
-        list_toolbar = ctk.CTkFrame(root, fg_color="transparent")
+        drop_area = ctk.CTkFrame(root, fg_color="transparent")
+        drop_area.pack(fill="both", expand=True)
+
+        list_toolbar = ctk.CTkFrame(drop_area, fg_color="transparent")
         list_toolbar.pack(fill="x", pady=(8, 4))
         ctk.CTkButton(list_toolbar, text="添加文件", width=90, command=self._on_add_files).pack(
             side="left", padx=(0, 6)
@@ -185,7 +191,7 @@ class MainWindow(ctk.CTk):
             side="left"
         )
 
-        fail_toolbar = ctk.CTkFrame(root, fg_color="transparent")
+        fail_toolbar = ctk.CTkFrame(drop_area, fg_color="transparent")
         fail_toolbar.pack(fill="x", pady=(0, 4))
         ctk.CTkButton(
             fail_toolbar, text="只勾选失败项", width=120, command=self._on_select_only_failed
@@ -197,8 +203,9 @@ class MainWindow(ctk.CTk):
             fail_toolbar, text="清除已成功", width=110, command=self._on_clear_succeeded
         ).pack(side="left")
 
-        self._item_list = ItemListPanel(root)
+        self._item_list = ItemListPanel(drop_area)
         self._item_list.pack(fill="both", expand=True, pady=4)
+        self._wire_drop_targets(drop_area, list_toolbar, fail_toolbar, self._item_list)
 
         batch_bar = ctk.CTkFrame(root, fg_color="transparent")
         batch_bar.pack(fill="x", pady=(8, 4))
@@ -238,6 +245,26 @@ class MainWindow(ctk.CTk):
         except Exception:
             pass
         self._after_handles.discard(handle)
+
+    def _wire_drop_targets(self, *widgets: ctk.CTkBaseClass) -> None:
+        """Register the main content area (list + toolbars) for Explorer drops."""
+        for widget in widgets:
+            widget.drop_target_register(DND_FILES)
+            widget.dnd_bind("<<Drop>>", self._on_drop_files)
+
+    def _on_drop_files(self, event: object) -> None:
+        """Parse a DnD payload, filter UNKNOWN, then AddPaths like button intake."""
+        data = getattr(event, "data", None)
+        if not data:
+            return
+        raw_paths = parse_dnd_files_payload(str(data))
+        if not raw_paths:
+            return
+        intake = classify_dropped_paths(raw_paths)
+        if intake.paths:
+            self._session.apply(AddPaths(list(intake.paths)))
+        if intake.status_text:
+            self._status_label.configure(text=intake.status_text)
 
     def _on_add_files(self) -> None:
         paths = filedialog.askopenfilenames(parent=self, title="选择文件")
