@@ -1,6 +1,6 @@
 ---
 name: verify-paperflick
-description: Drive the PaperFlick Windows desktop app (CustomTkinter) to prove boot, settings, Dry Run batch, orientation-on-add, preview orientation apply, list click-to-preview with inline remove, preview shown before thumbnail load, PDF print via SumatraPDF, image print via Pillow and Windows, DOCX print via Word then OnlyOffice, fail-and-reprint, printer-sidebar behavior (resizable session sash, hover full name, default suffix), the batch-end success and failure line, and wait-for-empty-queue between items. Use when verifying PaperFlick changes or AppData settings persistence.
+description: Drive the PaperFlick Windows desktop app (CustomTkinter) to prove boot, settings, Dry Run batch, the collapsed 设置 disclosure and 演练 label, status-bar version and About, orientation-on-add, preview orientation apply, list click-to-preview with inline remove, preview shown before thumbnail load, PDF print via SumatraPDF, image print via Pillow and Windows, DOCX print via Word then OnlyOffice, fail-and-reprint, printer-sidebar behavior (resizable session sash, hover full name, default suffix), the batch-end success and failure line, and wait-for-empty-queue between items. Use when verifying PaperFlick changes or AppData settings persistence.
 ---
 
 # Verify PaperFlick
@@ -18,7 +18,7 @@ New-Item -ItemType Directory -Force -Path $env:PAPERFLICK_APPDATA | Out-Null
 python -m paperflick
 ```
 
-Ready: a window titled `PaperFlick` appears with interval / wait-queue / Dry Run controls.
+Ready: a window titled `PaperFlick` appears. 「设置 ▾」 starts collapsed (interval, wait-queue, and 演练 are inside it). The status row shows the version badge on the right.
 
 Teardown: close the window (WM_DELETE_WINDOW persists settings), then remove the temp `PAPERFLICK_APPDATA` directory if this run created it. Keep proof artifacts under `.cursor/skills/verify-paperflick/artifacts/<run-id>/`.
 

@@ -19,6 +19,8 @@ Maintained source for verifying user-facing PaperFlick behavior. Read this index
 
 - [Boot window and settings](./boot-settings.md) covers launch, defaults, and AppData persistence.
 - [Interval and Dry Run controls](./interval-and-dry-run.md) covers symmetric persistence of toggles and interval.
+- [Settings disclosure and 演练 label](./settings-disclosure.md) covers the collapsed 设置 panel, the 演练 control, Dry Run status copy, and the failure bar under the list.
+- [About and version](./about.md) covers the status-bar version badge and the About dialog.
 - [Printer sidebar](./printer-sidebar.md) covers installed printer listing, `selected_printer` persistence, the resizable session sash, hover full names, and the 「（默认）」 label.
 - [Orientation on add](./orientation-on-add.md) covers Auto default, inferred 横向/纵向, and unread fallback.
 - [Preview orientation](./preview-orientation.md) covers Landscape, Portrait, and PrinterDefault applied to this item, the same type, or all.

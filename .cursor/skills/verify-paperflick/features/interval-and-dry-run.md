@@ -10,7 +10,7 @@ Changing the send interval or Dry Run updates `settings.json` so a restart (or `
 
 ## How to get to it (user POV)
 
-- In the main window, edit **发送间隔（秒）** or toggle **Dry Run**.
+- Open **设置 ▾**, then edit **发送间隔（秒）** or toggle **演练（不送打印机）**. The domain name stays Dry Run; the checkbox label is 演练.
 
 ## Driving it with MainWindow
 
