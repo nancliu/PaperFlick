@@ -4,10 +4,9 @@
 #define MyAppPublisher   "nancliu"
 #define MyAppURL         "https://github.com/nancliu/PaperFlick"
 #define MyAppExeName     "PaperFlick.exe"
-#define MyRepoRoot       ".."
-#define MySourceDir      MyRepoRoot + "\dist\PaperFlick.dist"
-#define MyOutputDir      MyRepoRoot + "\output"
-#define MyIconPath       MyRepoRoot + "\icons\PaperFlick.ico"
+#define MySourceDir      "D:\projects\printer-advance-wt-pack\dist\PaperFlick.dist"
+#define MyOutputDir      "D:\projects\printer-advance-wt-pack\output"
+#define MyIconPath       "D:\projects\printer-advance-wt-pack\icons\PaperFlick.ico"
 
 [Setup]
 AppId={{099E2B2A-3C82-485E-A3B3-724A2E72D6D3}
