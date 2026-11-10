@@ -102,7 +102,7 @@ def _prove_boot(app: MainWindow, lines: list[str]) -> None:
     assert app._version_button.winfo_rootx() >= label_right - 8
     assert "演练（不送打印机）" in _texts(app._prefs)
     assert all("Dry Run" not in text for text in _texts(app))
-    lines.append("boot collapsed settings; version on the status row; printer stays left")
+    lines.append("boot collapsed settings; lockup+version on the status row; printer stays left")
 
 
 def _prove_disclosure(app: MainWindow, lines: list[str]) -> None:
@@ -175,7 +175,8 @@ def _prove_about(app: MainWindow, lines: list[str]) -> None:
     about = app._about
     assert about is not None and about.winfo_exists()
     body = _texts(about)
-    assert "纸闪 PaperFlick" in body
+    # Lockup logo replaces the plain name label when brand assets are bundled.
+    assert about._logo is not None or "纸闪 PaperFlick" in body
     assert f"版本 {__version__}" in body
     assert "个人向 Windows 批量打印工具" in body
     assert "https://github.com/nancliu/PaperFlick" in body

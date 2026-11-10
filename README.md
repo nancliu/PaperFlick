@@ -1,3 +1,12 @@
+<p align="center">
+  <img src="icons/readme-banner.png" alt="PaperFlick banner" width="100%">
+</p>
+
+<p align="center">
+  <img src="icons/readme-logo-light.png#gh-light-mode-only" alt="PaperFlick" height="96">
+  <img src="icons/readme-logo-dark.png#gh-dark-mode-only" alt="PaperFlick" height="96">
+</p>
+
 # PaperFlick（纸闪）
 
 个人向 Windows 批量打印工具：把 PDF / DOCX / 图片排成打印项列表，按间隔串行提交，降低 Print Spooler 卡死风险；失败项可保留并一键重打。

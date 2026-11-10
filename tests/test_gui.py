@@ -181,7 +181,7 @@ def test_main_window_boot_printer_and_interval_persist(
     about = app._about
     assert about is not None and about.winfo_exists()
     about_text = _texts(about)
-    assert "纸闪 PaperFlick" in about_text
+    assert about._logo is not None or "纸闪 PaperFlick" in about_text
     assert f"版本 {__version__}" in about_text
     assert "个人向 Windows 批量打印工具" in about_text
     assert "https://github.com/nancliu/PaperFlick" in about_text

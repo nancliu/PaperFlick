@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paperflick"
-version = "0.1.0"
+version = "1.1.0"
 description = "PaperFlick (纸闪) — personal Windows batch printing tool"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,6 +30,9 @@ paperflick = "paperflick.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+paperflick = ["assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

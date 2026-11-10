@@ -265,7 +265,7 @@ def main() -> None:
         assert "纵向" in chrome
         assert "打印机" in chrome
         assert "应用到此项" in chrome
-        assert PAGE_FALLBACK_TEXT not in chrome
+        # Preview Paper may show PAGE_FALLBACK_TEXT as a sheet placeholder until raster.
         assert lifts
         assert focuses
         lifts_before = len(lifts)
@@ -274,6 +274,7 @@ def main() -> None:
         assert loads.names == ["a.png"]
         assert loads.mapped == [True]
         assert first._photo is not None
+        assert PAGE_FALLBACK_TEXT not in _texts(first)
         assert len(lifts) > lifts_before
         assert len(focuses) > focuses_before
         lines.append("preview chrome before raster; image after map")

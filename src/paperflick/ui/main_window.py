@@ -44,6 +44,7 @@ from paperflick.core.submit import (
 )
 from paperflick.ui.about import AboutWindow
 from paperflick.ui.about_info import version_badge
+from paperflick.ui.branding import apply_window_icon, title_logo_image
 from paperflick.ui.drill_status import DRILL_UI_LABEL, format_status_line
 from paperflick.ui.item_list import ItemListPanel
 from paperflick.ui.preview_window import PreviewWindow
@@ -136,6 +137,7 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
 
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("blue")
+        apply_window_icon(self)
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.pack(fill="both", expand=True, padx=12, pady=12)
@@ -145,19 +147,21 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
 
         title_row = ctk.CTkFrame(root, fg_color="transparent")
         title_row.pack(fill="x", pady=(0, 12))
-        ctk.CTkLabel(
-            title_row, text="纸闪 PaperFlick", font=ctk.CTkFont(size=18, weight="bold")
-        ).pack(side="left")
         self._settings_toggle = ctk.CTkButton(
             title_row,
             text="设置 ▾",
-            width=96,
-            height=28,
-            fg_color="transparent",
-            hover_color=("gray85", "gray25"),
+            width=88,
+            height=32,
+            border_width=1,
+            fg_color=("gray90", "gray25"),
+            hover_color=("gray80", "gray35"),
+            text_color=("gray10", "gray90"),
             command=self._toggle_settings,
         )
-        self._settings_toggle.pack(side="left", padx=(12, 0))
+        self._settings_toggle.pack(side="right")
+        ctk.CTkLabel(
+            title_row, text="纸闪 PaperFlick", font=ctk.CTkFont(size=18, weight="bold")
+        ).pack(side="left")
 
         self._prefs = ctk.CTkFrame(root, fg_color="transparent")
 
@@ -243,17 +247,32 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
         self._counts_label.pack(fill="x")
         self._status_label = ctk.CTkLabel(status_text, text="", anchor="w", text_color="gray")
         self._status_label.pack(fill="x")
+        brand_trail = ctk.CTkFrame(status_row, fg_color="transparent")
+        brand_trail.pack(side="right", padx=(8, 0))
+        self._title_logo = title_logo_image()
+        if self._title_logo is not None:
+            self._logo_button = ctk.CTkButton(
+                brand_trail,
+                text="",
+                image=self._title_logo,
+                width=120,
+                height=36,
+                fg_color="transparent",
+                hover_color=("gray85", "gray25"),
+                command=self._open_about,
+            )
+            self._logo_button.pack(side="left", padx=(0, 6))
         self._version_button = ctk.CTkButton(
-            status_row,
+            brand_trail,
             text=version_badge(__version__),
             width=72,
-            height=28,
+            height=36,
             fg_color="transparent",
             hover_color=("gray85", "gray25"),
             text_color="gray",
             command=self._open_about,
         )
-        self._version_button.pack(side="right", padx=(8, 0))
+        self._version_button.pack(side="left")
 
         self._bind_list(self._session.snapshot())
         self.protocol("WM_DELETE_WINDOW", self._on_close)

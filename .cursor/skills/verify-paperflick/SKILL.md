@@ -18,7 +18,7 @@ New-Item -ItemType Directory -Force -Path $env:PAPERFLICK_APPDATA | Out-Null
 python -m paperflick
 ```
 
-Ready: a window titled `PaperFlick` appears. 「设置 ▾」 starts collapsed (interval, wait-queue, and 演练 are inside it). The status row shows the version badge on the right.
+Ready: a window titled `PaperFlick` appears. 「设置 ▾」 starts collapsed (interval, wait-queue, and 演练 are inside it). The status row shows the lockup + version badge on the right.
 
 Teardown: close the window (WM_DELETE_WINDOW persists settings), then remove the temp `PAPERFLICK_APPDATA` directory if this run created it. Keep proof artifacts under `.cursor/skills/verify-paperflick/artifacts/<run-id>/`.
 
