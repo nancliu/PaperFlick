@@ -1,6 +1,6 @@
 ; PaperFlick Windows installer (Inno Setup 6)
 #define MyAppName        "PaperFlick（纸闪）"
-#define MyAppVersion     "1.0.0"
+#define MyAppVersion     "1.1.0"
 #define MyAppPublisher   "nancliu"
 #define MyAppURL         "https://github.com/nancliu/PaperFlick"
 #define MyAppExeName     "PaperFlick.exe"
@@ -23,7 +23,7 @@ DisableDirPage=no
 DisableProgramGroupPage=no
 PrivilegesRequired=admin
 OutputDir={#MyOutputDir}
-OutputBaseFilename=PaperFlick-Setup-1.0.0
+OutputBaseFilename=PaperFlick-Setup-1.1.0
 WizardStyle=modern
 SetupIconFile={#MyIconPath}
 UninstallDisplayIcon={app}\{#MyAppExeName}

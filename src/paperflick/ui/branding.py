@@ -64,10 +64,8 @@ def _logo_image(light_name: str, dark_name: str, *, size_height: int) -> ctk.CTk
         dark = Image.open(asset_path(dark_name)).convert("RGBA")
     except (FileNotFoundError, OSError):
         return None
-    width = max(
-        1,
-        round(max(light.width, dark.width) * (size_height / max(max(light.height, dark.height), 1))),
-    )
+    max_h = max(max(light.height, dark.height), 1)
+    width = max(1, round(max(light.width, dark.width) * (size_height / max_h)))
     size = (width, size_height)
     light = _fit_rgba(light, size)
     dark = _fit_rgba(dark, size)
