@@ -1,8 +1,8 @@
 # PaperFlick 发版清单
 
 目标产物：**Windows 安装包** + **GitHub Release** + **PyPI**。  
-Skills：`generating-python-installer`（封装）+ `ship --no-auto`（发版）。  
-本机策略：**首次禁止 agent 自动 push / publish**；每步等人确认。
+编排 skill：`/release-windows-python`（引入第三方 `generating-python-installer` → `ship --no-auto`，并补衔接缝）。  
+本机策略：默认 `--no-auto` 不代 push/Release/PyPI；用户明确授权后可代发（PyPI 凭据走 1Password `op://`）。
 
 > ADR `0004` 仍写「首版 mamba + 源码；冻二进制延后」。走本清单前，先开小 PR 修订 ADR（接受 Nuitka dist + Inno），再封装。
 
@@ -157,7 +157,6 @@ mamba run -n paperflick twine upload dist\*
 
 ## 推荐会话口令
 
-1. 「按 `docs/agents/release-checklist.md` 修订 ADR 0004，再开封装 PR。」
-2. 「`/generating-python-installer`，版本 `X.Y.Z`，做出 Setup。」
-3. 「`/ship X.Y.Z --no-auto`；**不要** push、**不要** `gh release create`、**不要** twine。」
-4. 你本地执行 §4。
+1. 「`/release-windows-python`，版本 `X.Y.Z`，档位 `patch|minor|major`。」
+2. 需要代发时：「合入后发 GitHub Release 并上传 PyPI；Token 用 `op://…/token`。」
+3. 调试单步时仍可直接：`/generating-python-installer` 或 `/ship X.Y.Z --no-auto`。
