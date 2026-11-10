@@ -15,7 +15,7 @@ Feature worktrees must include these files (branch from a tip that already has t
 
 ### Release (Windows installer + GitHub Release + PyPI)
 
-Executable checklist: `docs/agents/release-checklist.md`. Skills: `generating-python-installer` then `ship --no-auto`. First release: agent must not push or publish; human attaches the Setup exe and runs twine.
+Executable checklist: `docs/agents/release-checklist.md`. Orchestrator: `/release-windows-python` (my-skills)，按序调用第三方 `generating-python-installer` → `ship --no-auto`，再补 Release 附件与可选 PyPI。Nuitka 档位：`build_optimized.bat patch|minor|major`（清单 §2.1）。PyPI 用 1Password `op://…/token`，仅在明确授权时代发。
 
 ### Workflow (Matt + pstack)
 

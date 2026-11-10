@@ -1,8 +1,8 @@
 # PaperFlick 发版清单
 
 目标产物：**Windows 安装包** + **GitHub Release** + **PyPI**。  
-Skills：`generating-python-installer`（封装）+ `ship --no-auto`（发版）。  
-本机策略：**首次禁止 agent 自动 push / publish**；每步等人确认。
+编排 skill：`/release-windows-python`（引入第三方 `generating-python-installer` → `ship --no-auto`，并补衔接缝）。  
+本机策略：默认 `--no-auto` 不代 push/Release/PyPI；用户明确授权后可代发（PyPI 凭据走 1Password `op://`）。
 
 > ADR `0004` 仍写「首版 mamba + 源码；冻二进制延后」。走本清单前，先开小 PR 修订 ADR（接受 Nuitka dist + Inno），再封装。
 
@@ -11,7 +11,7 @@ Skills：`generating-python-installer`（封装）+ `ship --no-auto`（发版）
 ## 0. 一次性前置
 
 - [ ] 本机已装：**MSVC 或 MinGW**、**Nuitka**、**Inno Setup**、`gh` 已登录、`twine`/`build` 可用
-- [ ] PyPI 凭据就绪（`TWINE_USERNAME`/`TWINE_PASSWORD` 或 keyring）；**本次不由 agent 代发**
+- [ ] PyPI 凭据就绪：优先 1Password `op://…/token` + `TWINE_USERNAME=__token__`（或 keyring）；agent 仅在明确授权且本机可 `op read` 时代发
 - [ ] Cursor 已装 skill：`ship`、`generating-python-installer`
 - [ ] 工作树干净；在默认分支（或已合并待发版 tip）
 - [ ] 定版本号 `X.Y.Z`（与 `pyproject.toml` 即将写入的值一致）
@@ -47,13 +47,32 @@ mamba run -n paperflick pytest -q
 
 顺序固定：**先做出安装包，再发版**（安装包版本号 = 即将发布的 `X.Y.Z`）。
 
+### 2.1 Nuitka 编译档位（按 semver bump 选，省时间）
+
+本机 `build_optimized.bat` 接受档位参数（也可用环境变量 `PAPERFLICK_BUILD_PROFILE`）。  
+**不要**为了「省事」每次都开 LTO 全量：上次 LTO 链接可占整次编译大半时间。
+
+| 档位 | 何时用 | LTO | 是否清空 `dist\` | 缓存（Nuitka/clcache） | 命令 |
+|---|---|---|---|---|---|
+| `patch` | 补丁：文案/UI/资源微调、未动原生依赖 | `no` | 否（增量） | 保留 | `build_optimized.bat patch` |
+| `minor` | 小功能：预览/设置等纯 Python 行为 | `no` | 是（全量 folder） | 保留 | `build_optimized.bat minor` |
+| `major` | 大版本、或 MSVC/依赖/插件集合大变、对外正式质量包 | `yes` | 是 | 保留 | `build_optimized.bat major` |
+
+强制走 `major`（即使版本号是 patch）：换过 Python/Nuitka 大版本、增删 `pywin32`/`pymupdf` 等原生轮子、或用户明确要求「发版质量包」。
+
+默认经验：`patch`/`minor` 关 LTO 可把链接从数十分钟降到可接受范围；`major` 才付 LTO 成本。
+
+Agent：封装前先根据即将发布的 bump 选定档位并打印选择；用户可一句话覆盖（例如「这次强制 major」）。
+
+### 2.2 封装步骤
+
 1. 调用 skill；**逐项确认**参数（skill 禁止默认值）：
    - App Name：`PaperFlick` / `纸闪`
-   - Version：`X.Y.Z`
+   - Version：`X.Y.Z` + **编译档位** `patch|minor|major`
    - Publisher：（你的发布者名）
    - Exe Name：如 `PaperFlick.exe`
    - Source / Output / Icon / URL
-2. Nuitka：**folder/dist 模式**（不要 onefile）；`--windows-console-mode=disable`
+2. Nuitka：**folder/dist 模式**（不要 onefile）；`--windows-console-mode=disable`；LTO/清 dist 按上表
 3. 特别核对打包进 dist 的模块：`customtkinter`、`tkinterdnd2`、`pywin32`、`pymupdf`、`pypdf`、`PIL`、`docx`
 4. dist 瘦身 / DLL 分析后，在**干净 Windows 机或 VM** 安装并冒烟：
    - [ ] 启动空窗
@@ -138,7 +157,6 @@ mamba run -n paperflick twine upload dist\*
 
 ## 推荐会话口令
 
-1. 「按 `docs/agents/release-checklist.md` 修订 ADR 0004，再开封装 PR。」
-2. 「`/generating-python-installer`，版本 `X.Y.Z`，做出 Setup。」
-3. 「`/ship X.Y.Z --no-auto`；**不要** push、**不要** `gh release create`、**不要** twine。」
-4. 你本地执行 §4。
+1. 「`/release-windows-python`，版本 `X.Y.Z`，档位 `patch|minor|major`。」
+2. 需要代发时：「合入后发 GitHub Release 并上传 PyPI；Token 用 `op://…/token`。」
+3. 调试单步时仍可直接：`/generating-python-installer` 或 `/ship X.Y.Z --no-auto`。
