@@ -27,10 +27,13 @@ Disposable `PAPERFLICK_APPDATA`. Construct `MainWindow` headless (or launch the 
 - Dry Run finishes with no printer. Orientations are unchanged while statuses become success.
 - Clicking a second row closes the preview that is already open, then opens the new one.
 - Opening a preview with no radio chosen does not change the list.
-- The preview window shows its summary, orientation choices, and actions before the
-  thumbnail is decoded. Image and PDF previews then draw a first-page thumbnail;
-  DOCX draws a Windows Shell first-page thumbnail when a preview handler exists.
-  A failed decode keeps the text fallback. The window is lifted and focused.
+- The preview window shows its summary, Preview Paper sheet, orientation choices,
+  and actions before the thumbnail is decoded. Image and PDF previews then draw a
+  first-page thumbnail fit-inside the paper; DOCX draws a Windows Shell first-page
+  thumbnail when a preview handler exists. A failed decode keeps the text fallback
+  on the paper sheet. The window is lifted and focused. Facing overlay details are
+  covered by [Preview Paper](./preview-paper.md).
+
 
 ## Evidence
 

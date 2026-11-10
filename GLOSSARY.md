@@ -27,3 +27,11 @@ _Avoid_: Rotate, Page setup
 **Auto / Landscape / Portrait / PrinterDefault**：
 Orientation 的四态：自动按首页几何推断；强制横向；强制纵向；不改方向、交给打印机当前默认。UI 文案可用「自动 / 横向 / 纵向 / 打印机」。
 _Avoid_: 混用中英文当代码标识；用 `horizontal`/`vertical` 代替 Landscape/Portrait
+
+**Facing（朝向结果）**：
+由 Orientation 与页面几何经 `resolve_facing` 得到的 Landscape / Portrait；PrinterDefault 解析为不强制（无 Facing）。不作为 Orientation 持久化。
+_Avoid_: 把 Facing 存成 Orientation；把「打印机」预览画成假的横向/纵向
+
+**Preview Paper（预览纸面）**：
+预览窗里用灰底 + 白纸框表达 Facing 的纸张叠层（A4 比例；横向时对调）。不是 Print Job，也不是系统打印对话框。
+_Avoid_: 把 Preview Paper 当成提交端口或真实打印机纸张尺寸
