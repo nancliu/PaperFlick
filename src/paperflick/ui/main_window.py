@@ -255,18 +255,18 @@ class MainWindow(ctk.CTk, TkinterDnD.DnDWrapper):
                 brand_trail,
                 text="",
                 image=self._title_logo,
-                width=28,
-                height=28,
+                width=120,
+                height=36,
                 fg_color="transparent",
                 hover_color=("gray85", "gray25"),
                 command=self._open_about,
             )
-            self._logo_button.pack(side="left", padx=(0, 4))
+            self._logo_button.pack(side="left", padx=(0, 6))
         self._version_button = ctk.CTkButton(
             brand_trail,
             text=version_badge(__version__),
             width=72,
-            height=28,
+            height=36,
             fg_color="transparent",
             hover_color=("gray85", "gray25"),
             text_color="gray",
