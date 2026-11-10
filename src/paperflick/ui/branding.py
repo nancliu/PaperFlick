@@ -44,8 +44,8 @@ def apply_window_icon(window: ctk.CTk | ctk.CTkToplevel) -> None:
 
 
 def title_logo_image() -> ctk.CTkImage | None:
-    """Return the title-row lockup (light/dark), scaled taller for presence."""
-    return _logo_image("logo-light.png", "logo-dark.png", size_height=40)
+    """Return a compact status-bar lockup (light/dark) beside the version badge."""
+    return _logo_image("logo-light.png", "logo-dark.png", size_height=22)
 
 
 def about_logo_image() -> ctk.CTkImage | None:

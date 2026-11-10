@@ -102,7 +102,7 @@ def _prove_boot(app: MainWindow, lines: list[str]) -> None:
     assert app._version_button.winfo_rootx() >= label_right - 8
     assert "演练（不送打印机）" in _texts(app._prefs)
     assert all("Dry Run" not in text for text in _texts(app))
-    lines.append("boot collapsed settings; version on the status row; printer stays left")
+    lines.append("boot collapsed settings; lockup+version on the status row; printer stays left")
 
 
 def _prove_disclosure(app: MainWindow, lines: list[str]) -> None:
