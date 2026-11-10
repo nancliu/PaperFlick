@@ -13,6 +13,10 @@ Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `
 Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
 Feature worktrees must include these files (branch from a tip that already has them, or copy from the main checkout before coding).
 
+### Release (Windows installer + GitHub Release + PyPI)
+
+Executable checklist: `docs/agents/release-checklist.md`. Skills: `generating-python-installer` then `ship --no-auto`. First release: agent must not push or publish; human attaches the Setup exe and runs twine.
+
 ### Workflow (Matt + pstack)
 
 - **Align**: Matt (`/grill-me`, `/grill-with-docs`, `/wayfinder`, `/to-spec`, `/to-tickets`). Do not start `/implement` in parallel with pstack orchestration. A single `ready-for-agent` issue that already has grill decisions and one clear cut skips `/to-spec` / `/to-tickets`; use those only when the issue must split into multiple tickets or parallel owners.

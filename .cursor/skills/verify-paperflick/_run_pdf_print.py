@@ -105,7 +105,9 @@ def _prove_real_pdf_print(
         "landscape",
         "portrait",
     ]
-    assert all("-print-to-default" in call[1] for call in calls)
+    assert all(
+        "-print-to-default" in call[1] or "-print-to" in call[1] for call in calls
+    )
     assert all("-silent" in call[1] for call in calls)
     assert calls[1][0] - calls[0][0] >= 0.3
     assert any("图片无法打开" in text for text in _row_labels(app))

@@ -2,7 +2,7 @@
 
 Prove issue #43. The status row shows counts and the status line on the left, and a clickable `vX.Y.Z` on the right. The badge reads `paperflick.__version__`. That string matches `[project].version` in `pyproject.toml`. The window title stays `PaperFlick`. There is no version badge on the add toolbar, no auto-update, and no in-app changelog.
 
-Clicking the badge opens About. The dialog shows `纸闪 PaperFlick`, `版本 X.Y.Z`, `个人向 Windows 批量打印工具`, the link `https://github.com/nancliu/PaperFlick`, and 「关闭」. The link opens in the system browser. A second click lifts the same dialog. About is not reached through 设置.
+Clicking the badge opens About. The dialog shows the brand lockup (or the plain `纸闪 PaperFlick` name when assets are missing), `版本 X.Y.Z`, `个人向 Windows 批量打印工具`, the link `https://github.com/nancliu/PaperFlick`, and 「关闭」. The link opens in the system browser. A second click lifts the same dialog. About is not reached through 设置.
 
 ## Setup
 
